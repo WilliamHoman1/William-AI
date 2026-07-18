@@ -1,9 +1,18 @@
 (function initField(){
   const canvas = document.getElementById('particleField');
   const renderer = new THREE.WebGLRenderer({ canvas, alpha:true, antialias:true });
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
   camera.position.set(0, 0, 14);
+
+  // cheap bloom: a small offscreen-resolution 2D canvas redrawn from this
+  // WebGL canvas each frame, then blurred/brightened via CSS (see style.css)
+  const glowCanvas = document.getElementById('particleFieldGlow');
+  const glowCtx = glowCanvas.getContext('2d');
+  const GLOW_SCALE = 0.32;
 
   let uPerspective = 1;
   function resize(){
@@ -13,6 +22,8 @@
     camera.updateProjectionMatrix();
     uPerspective = computePerspective(renderer, camera);
     if(mat) mat.uniforms.uPerspective.value = uPerspective;
+    glowCanvas.width = Math.max(1, Math.round(window.innerWidth * GLOW_SCALE));
+    glowCanvas.height = Math.max(1, Math.round(window.innerHeight * GLOW_SCALE));
   }
 
   // purple-leaning nebula palette (weighted toward violet/indigo, blue rim, rare white sparks)
@@ -182,6 +193,8 @@
     if(++linkFrame % 5 === 0) updateLinks(timeSec);
 
     renderer.render(scene, camera);
+    glowCtx.clearRect(0, 0, glowCanvas.width, glowCanvas.height);
+    glowCtx.drawImage(canvas, 0, 0, glowCanvas.width, glowCanvas.height);
   }
   animate();
 })();
