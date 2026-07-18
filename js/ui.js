@@ -106,6 +106,17 @@ function closeResume(){
 const history = [];
 const log = document.getElementById('log');
 
+// Claude sometimes replies with markdown (**bold**, *italic*, # headers) —
+// this is a plain-text log and a spoken voice, neither of which should show
+// or say the raw symbols, so strip markdown formatting before use.
+function stripMarkdown(text){
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/[*_`]/g, '');
+}
+
 function appendLine(role, text){
   const el = document.createElement('div');
   el.className = 'line ' + role;
@@ -179,9 +190,10 @@ async function send(){
       appendLine('sys', '// Backend error: ' + (data.error || res.status) + '. Check ANTHROPIC_API_KEY is set in your deployment.');
       return;
     }
-    const reply = data.reply || "No response received.";
+    const rawReply = data.reply || "No response received.";
+    const reply = stripMarkdown(rawReply);
     appendLine('ai', reply);
-    history.push({role:'assistant', content:reply});
+    history.push({role:'assistant', content:rawReply});
     speak(reply);
   }catch(err){
     typingEl.remove();
@@ -202,11 +214,21 @@ const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRec
 if(SpeechRecognitionCtor){
   recognition = new SpeechRecognitionCtor();
   recognition.lang = 'en-US';
-  recognition.interimResults = false;
+  recognition.interimResults = true; // show words live as they're recognized, not just the final phrase
   recognition.maxAlternatives = 1;
   recognition.onresult = (e) => {
-    document.getElementById('input').value = e.results[0][0].transcript;
-    send();
+    let finalTranscript = '';
+    let interimTranscript = '';
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      const transcript = e.results[i][0].transcript;
+      if(e.results[i].isFinal) finalTranscript += transcript;
+      else interimTranscript += transcript;
+    }
+    document.getElementById('input').value = finalTranscript || interimTranscript;
+    if(finalTranscript){
+      stopListening(); // resets the mic-reactive pulse before send() starts its own "thinking" pulse
+      send();
+    }
   };
   recognition.onerror = () => { stopListening(); };
   recognition.onend = () => { stopListening(); };
@@ -214,10 +236,53 @@ if(SpeechRecognitionCtor){
   micBtn.style.display = 'none'; // Safari/iOS has no SpeechRecognition support
 }
 
+// ---------- Mic-reactive pulse: while listening, the orb pulses with the
+// actual volume of your voice (via an AnalyserNode on the raw mic stream),
+// instead of just sitting in a static "listening" pose. ----------
+let micStream = null, micAudioCtx = null, micAnalyser = null, micDataArray = null, micRafId = null;
+
+function startMicAnalysis(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+  navigator.mediaDevices.getUserMedia({ audio:true }).then(stream => {
+    if(!listening){ stream.getTracks().forEach(t => t.stop()); return; } // stopped while permission was pending
+    micStream = stream;
+    micAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = micAudioCtx.createMediaStreamSource(stream);
+    micAnalyser = micAudioCtx.createAnalyser();
+    micAnalyser.fftSize = 256;
+    source.connect(micAnalyser);
+    micDataArray = new Uint8Array(micAnalyser.frequencyBinCount);
+    pumpMicLevel();
+  }).catch(() => { /* mic permission denied — recognition still works, just no amplitude pulse */ });
+}
+
+function pumpMicLevel(){
+  if(!micAnalyser) return;
+  micAnalyser.getByteTimeDomainData(micDataArray);
+  let sumSq = 0;
+  for(let i = 0; i < micDataArray.length; i++){
+    const v = (micDataArray[i] - 128) / 128;
+    sumSq += v * v;
+  }
+  const rms = Math.sqrt(sumSq / micDataArray.length);
+  reactorPulse = 1 + Math.min(rms * 9, 2.2);
+  micRafId = requestAnimationFrame(pumpMicLevel);
+}
+
+function stopMicAnalysis(){
+  if(micRafId){ cancelAnimationFrame(micRafId); micRafId = null; }
+  if(!micStream && !micAudioCtx) return; // already stopped — leave reactorPulse alone
+  if(micStream){ micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  if(micAudioCtx){ micAudioCtx.close(); micAudioCtx = null; }
+  micAnalyser = null;
+  reactorPulse = 1;
+}
+
 function stopListening(){
   listening = false;
   micBtn.classList.remove('listening');
   reactorListening = false;
+  stopMicAnalysis();
 }
 
 function toggleListening(){
@@ -232,6 +297,7 @@ function toggleListening(){
     listening = true;
     micBtn.classList.add('listening');
     reactorListening = true;
+    startMicAnalysis();
   }catch(err){ /* recognition already running */ }
 }
 
@@ -243,6 +309,30 @@ if(!('speechSynthesis' in window)){
 const voiceRow = document.getElementById('voiceRow');
 const voiceSelect = document.getElementById('voiceSelect');
 let selectedVoice = null;
+
+// clearer, less "robotic" female voices, roughly in quality order across
+// platforms (Chrome/Edge fetch the Google ones from the network, so they
+// sound far more natural than the fully-offline OS voices below them).
+const PREFERRED_VOICE_NAMES = [
+  'Google US English',
+  'Microsoft Aria Online (Natural) - English (United States)',
+  'Microsoft Jenny Online (Natural) - English (United States)',
+  'Samantha',
+  'Microsoft Zira Desktop - English (United States)',
+  'Google UK English Female',
+];
+
+function pickDefaultVoiceIndex(voices){
+  for(const name of PREFERRED_VOICE_NAMES){
+    const i = voices.findIndex(v => v.name === name);
+    if(i >= 0) return i;
+  }
+  // fall back to any voice whose name flags itself as female
+  const femaleIdx = voices.findIndex(v => /female/i.test(v.name) && v.lang && v.lang.startsWith('en'));
+  if(femaleIdx >= 0) return femaleIdx;
+  const enIdx = voices.findIndex(v => v.lang && v.lang.startsWith('en'));
+  return enIdx >= 0 ? enIdx : 0;
+}
 
 function populateVoiceList(){
   if(!('speechSynthesis' in window)) return;
@@ -257,9 +347,7 @@ function populateVoiceList(){
     voiceSelect.appendChild(opt);
   });
 
-  // default to an English voice if one exists, otherwise the browser's first voice
-  const defaultIdx = voices.findIndex(v => v.lang && v.lang.startsWith('en'));
-  const idx = defaultIdx >= 0 ? defaultIdx : 0;
+  const idx = pickDefaultVoiceIndex(voices);
   voiceSelect.value = idx;
   selectedVoice = voices[idx];
 }

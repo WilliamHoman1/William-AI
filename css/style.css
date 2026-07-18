@@ -230,10 +230,18 @@ body::after{
   padding:2px 9px;font-size:10.5px;color:var(--dim);margin:2px 4px 0 0;
 }
 .entry a{ color:var(--purple); }
-.photo-grid{ display:grid;grid-template-columns:repeat(3,1fr);gap:8px; }
+.photo-grid{ display:grid;grid-template-columns:repeat(2,1fr);gap:12px; }
+.photo-grid figure{ margin:0; }
 .photo-grid img{
   aspect-ratio:1/1;width:100%;object-fit:cover;
   border:1px solid rgba(120,150,255,0.35);border-radius:6px;background:rgba(120,150,255,0.06);
+  display:block;
+}
+.photo-grid figcaption{
+  margin-top:6px;font-size:11px;line-height:1.4;color:var(--dim);
+}
+@media (max-width:520px){
+  .photo-grid{ grid-template-columns:1fr; }
 }
 
 /* Chat panel specifics */
