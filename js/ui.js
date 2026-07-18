@@ -102,6 +102,20 @@ function closeResume(){
   resumeFrame.src = '';
 }
 
+// ---------- Photo lightbox: full, uncropped image (the grid crops to a
+// square for a tidy layout, so this shows the whole photo on click) ----------
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+
+function openLightbox(src, alt){
+  lightboxImg.src = src;
+  lightboxImg.alt = alt || '';
+  lightbox.classList.add('open');
+}
+function closeLightbox(){
+  lightbox.classList.remove('open');
+}
+
 // ---------- Chat logic ----------
 const history = [];
 const log = document.getElementById('log');
@@ -362,15 +376,25 @@ if('speechSynthesis' in window){
   voiceRow.style.display = 'none';
 }
 
+let currentAudio = null;
+
 function toggleVoiceOutput(){
   voiceOutputEnabled = !voiceOutputEnabled;
   voiceToggleBtn.classList.toggle('muted', !voiceOutputEnabled);
   voiceToggleBtn.textContent = voiceOutputEnabled ? 'VOICE' : 'MUTED';
-  if(!voiceOutputEnabled) window.speechSynthesis.cancel();
+  if(!voiceOutputEnabled){
+    window.speechSynthesis.cancel();
+    if(currentAudio){ currentAudio.pause(); currentAudio = null; }
+  }
 }
 
-function speak(text){
-  if(!voiceOutputEnabled || !('speechSynthesis' in window)) return;
+// Primary voice: a specific chosen ElevenLabs voice, generated server-side via
+// /api/tts (keeps the API key off the client). Falls back to the browser's
+// built-in speechSynthesis voice if ElevenLabs isn't configured, fails, or
+// the monthly quota has run out — so this degrades gracefully rather than
+// going silent.
+function speakBrowser(text){
+  if(!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   if(selectedVoice) utter.voice = selectedVoice;
@@ -379,4 +403,30 @@ function speak(text){
   utter.onstart = () => { reactorPulse = 2.4; };
   utter.onend = () => { reactorPulse = 1; };
   window.speechSynthesis.speak(utter);
+}
+
+async function speak(text){
+  if(!voiceOutputEnabled) return;
+
+  try{
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ text }),
+    });
+    if(!res.ok) throw new Error('tts unavailable');
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    if(currentAudio){ currentAudio.pause(); }
+    const audio = new Audio(url);
+    currentAudio = audio;
+    audio.onplay = () => { reactorPulse = 2.4; };
+    audio.onended = () => { reactorPulse = 1; URL.revokeObjectURL(url); };
+    audio.onerror = () => { reactorPulse = 1; URL.revokeObjectURL(url); };
+    if(!voiceOutputEnabled) return; // muted while we were fetching
+    await audio.play();
+  }catch(err){
+    speakBrowser(text); // ElevenLabs not configured / request failed / quota used up
+  }
 }

@@ -11,7 +11,7 @@ let partField = () => {};      // reassigned once the field boots; called on tab
 
 // shared soft circular glow sprite — still used for the corona/ring sprites
 function makeGlowSprite(){
-  const size = 64;
+  const size = 128; // higher-res gradient — less banding/pixelation when the sprite is scaled up
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d');
@@ -39,6 +39,12 @@ const DOT_FRAGMENT_SHADER = `
     gl_FragColor = vec4(vColor, alpha * uOpacity);
   }
 `;
+
+// desktops (fine pointer, plugged into power) can afford a sharper render
+// target than phones (coarse pointer, battery-constrained) — so cap pixel
+// ratio higher on the former and keep the safer cap on the latter.
+const IS_COARSE_POINTER = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+const MAX_PIXEL_RATIO = IS_COARSE_POINTER ? 2 : 3;
 
 // screen-space point size that matches THREE.PointsMaterial's own
 // sizeAttenuation formula, computed once per resize (not per-particle).
