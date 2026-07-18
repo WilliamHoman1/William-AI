@@ -69,15 +69,17 @@
     uniforms: {
       uTime: { value: 0 }, uSpread: { value: 1 }, uSize: { value: 0.045 },
       uPerspective: { value: 1 }, uOpacity: { value: 1 },
+      uTint: { value: new THREE.Vector3(1, 1, 1) }, // shifts cool/blue while listening, neutral otherwise
     },
     vertexShader: `
       uniform float uTime, uSpread, uSize, uPerspective;
+      uniform vec3 uTint;
       attribute float aSeed;
       attribute vec3 color;
       varying vec3 vColor;
       float hash11(float n){ return fract(sin(n) * 43758.5453123); }
       void main(){
-        vColor = color;
+        vColor = color * uTint;
 
         // each particle gets its own frequency + phase (via hashed seeds) instead
         // of sharing one global sine, so the surface churns like plasma rather
@@ -137,9 +139,11 @@
     uniforms: {
       uTime: { value: 0 }, uPulse: { value: 1 }, uSize: { value: 0.06 },
       uPerspective: { value: 1 }, uOpacity: { value: 1 },
+      uTint: { value: new THREE.Vector3(1, 1, 1) },
     },
     vertexShader: `
       uniform float uTime, uPulse, uSize, uPerspective;
+      uniform vec3 uTint;
       attribute float aSeed, aSpeed, aPhase;
       attribute vec3 color;
       varying vec3 vColor;
@@ -157,7 +161,7 @@
         vec3 dir = hashDir(aSeed * 97.13 + loopCount * 13.37);
         float reach = 1.0 + pow(sin(life * 3.14159265), 0.7) * 1.35;
         float fade = sin(life * 3.14159265);
-        vColor = color * (fade * (0.5 + uPulse * 0.5));
+        vColor = color * uTint * (fade * (0.5 + uPulse * 0.5));
         vec3 pos = dir * reach;
         vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
         gl_PointSize = uSize * (uPerspective / -mvPosition.z);
@@ -229,15 +233,36 @@
     ptr.y = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
   }, {passive:true});
 
+  // baseline (sun) vs. listening (cool cyan) colors for the corona sprites —
+  // lerped live in animate() based on curListen, alongside the core/flare uTint
+  const coronaBase = new THREE.Color(0xff9d3d);
+  const coronaListen = new THREE.Color(0x5ad7ff);
+  const coronaBase2 = new THREE.Color(0xffe2a8);
+  const coronaListen2 = new THREE.Color(0x9fe8ff);
+  const tintNeutral = new THREE.Vector3(1, 1, 1);
+  const tintListen = new THREE.Vector3(0.55, 0.85, 1.3);
+  const curTint = new THREE.Vector3(1, 1, 1);
+
   const clock = new THREE.Clock();
   let curPulse = 1;
+  let curListen = 0;
   function animate(){
     requestAnimationFrame(animate);
     const t = clock.getElapsedTime() * 0.72; // matches the old ~0.012/frame @60fps pace
     curHover += (hover - curHover) * 0.08;
     curPulse += (reactorPulse - curPulse) * 0.05;
+    curListen += ((reactorListening ? 1 : 0) - curListen) * 0.08;
     curPtr.x += (ptr.x - curPtr.x) * 0.04;
     curPtr.y += (ptr.y - curPtr.y) * 0.04;
+
+    // idle/speaking = warm sun palette, listening = cool cyan tint — gives the
+    // orb a visibly distinct "I'm hearing you" state versus "I'm responding"
+    const targetTint = curListen > 0.001 ? tintListen : tintNeutral;
+    curTint.lerp(targetTint, 0.08);
+    coreMat.uniforms.uTint.value.copy(curTint);
+    flareMat.uniforms.uTint.value.copy(curTint);
+    coronaMat.color.copy(coronaBase).lerp(coronaListen, curListen);
+    coronaMat2.color.copy(coronaBase2).lerp(coronaListen2, curListen);
 
     flareMat.uniforms.uTime.value = t;
     flareMat.uniforms.uPulse.value = curPulse;
@@ -250,7 +275,7 @@
     coronaMat2.opacity = 0.55 * Math.min(curPulse, 1.6);
 
     coreMat.uniforms.uTime.value = t;
-    coreMat.uniforms.uSpread.value = 1 + curHover * 0.3 + Math.sin(t*1.6)*0.04*curPulse;
+    coreMat.uniforms.uSpread.value = 1 + curHover * 0.3 + curListen * 0.18 + Math.sin(t*1.6)*0.04*curPulse;
     coreMat.uniforms.uSize.value = 0.045 * (1 + Math.sin(t*1.4)*0.18*curPulse);
 
     coreSphere.rotation.y += 0.003 + curHover*0.004;

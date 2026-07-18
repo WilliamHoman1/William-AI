@@ -1,6 +1,13 @@
 // ---------- Side rail bars (metallic, no icons/lines) ----------
-const leftTopics  = [ {id:'about',    label:'About'},   {id:'resume',   label:'Resume'},   {id:'history',  label:'History'} ];
-const rightTopics = [ {id:'projects', label:'Projects'},{id:'photos',   label:'Photos'} ];
+// all content topics live on the left rail now; the right side is reserved
+// for the chat drawer, which the orb opens directly (see openChat/closeChat below).
+const leftTopics = [
+  {id:'about',    label:'About'},
+  {id:'resume',   label:'Resume'},
+  {id:'projects', label:'Projects'},
+  {id:'photos',   label:'Photos'},
+  {id:'history',  label:'History'},
+];
 
 function buildRail(container, topics){
   topics.forEach(t => {
@@ -12,12 +19,11 @@ function buildRail(container, topics){
   });
 }
 buildRail(document.getElementById('railLeft'), leftTopics);
-buildRail(document.getElementById('railRight'), rightTopics);
 
 const coreStage = document.getElementById('coreStage');
 const infoPanel = document.getElementById('infoPanel');
 const panelTitle = document.getElementById('panelTitle');
-const tabTitles = { about:'About Me', resume:'Resume', projects:'Projects', photos:'Photos', history:'History', chat:'AI Console' };
+const tabTitles = { about:'About Me', resume:'Resume', projects:'Projects', photos:'Photos', history:'History' };
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
@@ -46,8 +52,6 @@ function selectPanel(id){
     panelBackdrop.classList.add('open');
   }, 650);
 }
-function openChat(){ selectPanel('chat'); }
-
 function closePanel(){
   infoPanel.classList.remove('open');
   panelBackdrop.classList.remove('open');
@@ -55,6 +59,47 @@ function closePanel(){
   coreStage.classList.remove('spin-out');
   document.getElementById('statusLine').textContent = 'SYSTEMS ONLINE — TAP THE CORE TO TALK';
   partField();
+}
+
+// ---------- Chat drawer: unlike the content panels above, this never hides
+// the orb — it stays visible and animating (idle/listening/speaking) the
+// whole time you're talking to it. ----------
+const chatDrawer = document.getElementById('chatDrawer');
+let chatOpen = false;
+
+function openChat(){
+  if(chatOpen){ closeChat(); return; }
+  chatOpen = true;
+  chatDrawer.classList.add('open');
+  coreStage.classList.add('chat-active');
+  document.querySelectorAll('.rail').forEach(r => r.classList.add('chat-hidden'));
+  document.getElementById('statusLine').textContent = 'AI CONSOLE ACTIVE';
+  partField();
+}
+
+function closeChat(){
+  chatOpen = false;
+  chatDrawer.classList.remove('open');
+  coreStage.classList.remove('chat-active');
+  document.querySelectorAll('.rail').forEach(r => r.classList.remove('chat-hidden'));
+  document.getElementById('statusLine').textContent = 'SYSTEMS ONLINE — TAP THE CORE TO TALK';
+  partField();
+}
+
+// ---------- Resume preview modal ----------
+const resumeModal = document.getElementById('resumeModal');
+const resumeBackdrop = document.getElementById('resumeBackdrop');
+const resumeFrame = document.getElementById('resumeFrame');
+
+function openResume(){
+  resumeFrame.src = 'assets/resume.pdf';
+  resumeModal.classList.add('open');
+  resumeBackdrop.classList.add('open');
+}
+function closeResume(){
+  resumeModal.classList.remove('open');
+  resumeBackdrop.classList.remove('open');
+  resumeFrame.src = '';
 }
 
 // ---------- Chat logic ----------
@@ -172,6 +217,7 @@ if(SpeechRecognitionCtor){
 function stopListening(){
   listening = false;
   micBtn.classList.remove('listening');
+  reactorListening = false;
 }
 
 function toggleListening(){
@@ -185,11 +231,47 @@ function toggleListening(){
     recognition.start();
     listening = true;
     micBtn.classList.add('listening');
+    reactorListening = true;
   }catch(err){ /* recognition already running */ }
 }
 
 if(!('speechSynthesis' in window)){
   voiceToggleBtn.style.display = 'none';
+}
+
+// ---------- Voice picker: lets visitors choose which installed system voice speaks replies ----------
+const voiceRow = document.getElementById('voiceRow');
+const voiceSelect = document.getElementById('voiceSelect');
+let selectedVoice = null;
+
+function populateVoiceList(){
+  if(!('speechSynthesis' in window)) return;
+  const voices = window.speechSynthesis.getVoices();
+  if(!voices.length) return;
+
+  voiceSelect.innerHTML = '';
+  voices.forEach((v, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = v.name + (v.lang ? ' (' + v.lang + ')' : '');
+    voiceSelect.appendChild(opt);
+  });
+
+  // default to an English voice if one exists, otherwise the browser's first voice
+  const defaultIdx = voices.findIndex(v => v.lang && v.lang.startsWith('en'));
+  const idx = defaultIdx >= 0 ? defaultIdx : 0;
+  voiceSelect.value = idx;
+  selectedVoice = voices[idx];
+}
+
+if('speechSynthesis' in window){
+  populateVoiceList();
+  window.speechSynthesis.onvoiceschanged = populateVoiceList; // voice list loads async in some browsers
+  voiceSelect.addEventListener('change', () => {
+    selectedVoice = window.speechSynthesis.getVoices()[voiceSelect.value];
+  });
+} else {
+  voiceRow.style.display = 'none';
 }
 
 function toggleVoiceOutput(){
@@ -203,6 +285,7 @@ function speak(text){
   if(!voiceOutputEnabled || !('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
+  if(selectedVoice) utter.voice = selectedVoice;
   utter.rate = 1.02;
   utter.pitch = 1.0;
   utter.onstart = () => { reactorPulse = 2.4; };

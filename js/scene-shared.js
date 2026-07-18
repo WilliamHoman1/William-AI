@@ -5,8 +5,9 @@
 // ~15,000 particles had their positions recomputed in a JS loop 60x/sec. Moving
 // that math onto the GPU keeps the CPU nearly idle regardless of particle count,
 // which is what actually matters for phone battery/thermal behavior.
-let reactorPulse = 1;      // set higher while "thinking" (drives the breathing pulse)
-let partField = () => {};  // reassigned once the field boots; called on tab open/close
+let reactorPulse = 1;          // set higher while "thinking"/speaking (drives the breathing pulse)
+let reactorListening = false;  // true while the mic is actively capturing speech (drives a cool tint)
+let partField = () => {};      // reassigned once the field boots; called on tab open/close
 
 // shared soft circular glow sprite — still used for the corona/ring sprites
 function makeGlowSprite(){
