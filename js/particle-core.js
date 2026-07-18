@@ -3,9 +3,18 @@
   const canvas = document.getElementById('coreParticles');
   const wrap = canvas.parentElement;
   const renderer = new THREE.WebGLRenderer({ canvas, alpha:true, antialias:true });
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 30);
   camera.position.z = 9.5;
+
+  // cheap bloom: a small offscreen-resolution 2D canvas redrawn from this
+  // WebGL canvas each frame, then blurred/brightened via CSS (see style.css)
+  const glowCanvas = document.getElementById('coreParticlesGlow');
+  const glowCtx = glowCanvas.getContext('2d');
+  const GLOW_SCALE = 0.4;
 
   let uPerspective = 1;
   function resize(){
@@ -17,6 +26,8 @@
     uPerspective = computePerspective(renderer, camera);
     if(coreMat) coreMat.uniforms.uPerspective.value = uPerspective;
     if(flareMat) flareMat.uniforms.uPerspective.value = uPerspective;
+    glowCanvas.width = Math.max(1, Math.round(s * GLOW_SCALE));
+    glowCanvas.height = Math.max(1, Math.round(s * GLOW_SCALE));
   }
 
   // sun palette — white-hot core fading through gold to a deep orange rim
@@ -291,6 +302,8 @@
     reactor.rotation.x = -curPtr.y * 0.3;
 
     renderer.render(scene, camera);
+    glowCtx.clearRect(0, 0, glowCanvas.width, glowCanvas.height);
+    glowCtx.drawImage(canvas, 0, 0, glowCanvas.width, glowCanvas.height);
   }
   animate();
 })();

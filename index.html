@@ -4,13 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>William AI</title>
+<meta name="description" content="A 3D particle AI hub for William Homan — resume, projects, and an AI console.">
 <meta property="og:title" content="William AI">
 <meta property="og:description" content="A 3D particle AI hub for William Homan — resume, projects, and an AI console.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://william-ai-lyart.vercel.app">
+<meta property="og:image" content="https://william-ai-lyart.vercel.app/assets/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="William AI">
+<meta name="twitter:description" content="A 3D particle AI hub for William Homan — resume, projects, and an AI console.">
+<meta name="twitter:image" content="https://william-ai-lyart.vercel.app/assets/og-image.png">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
+  <div class="boot-screen" id="bootScreen" onclick="skipBoot()">
+    <div class="boot-lines" id="bootLines"></div>
+    <div class="boot-hint">tap to skip</div>
+  </div>
+
   <canvas id="particleField"></canvas>
+  <canvas id="particleFieldGlow"></canvas>
 
   <div class="header">
     <div class="brand">Homan Systems</div>
@@ -24,6 +39,7 @@
     <div class="center-slot">
       <div class="core-stage" id="coreStage" onclick="openChat()">
         <canvas id="coreParticles"></canvas>
+        <canvas id="coreParticlesGlow"></canvas>
         <div class="tap-hint">tap to talk</div>
       </div>
 
@@ -84,22 +100,36 @@
     </div>
 
     <div class="tab-content" id="tab-projects">
-      <div class="entry">
+      <div class="entry project-card">
+        <div class="project-media">
+          <img src="assets/og-image.png" alt="WilliamAI site preview" loading="lazy" onclick="openLightbox(this.src, this.alt)" onerror="this.closest('.project-media').style.display='none'">
+        </div>
         <h3>WilliamAI (this site)</h3>
         <p>A 3D particle AI hub portfolio with a Claude-powered chatbot — GPU-shader particle system (Three.js), voice input/output.</p>
         <span class="tag">Three.js</span><span class="tag">Claude API</span><span class="tag">JavaScript</span><span class="tag">Vercel</span>
       </div>
-      <div class="entry">
+      <div class="entry project-card">
+        <div class="project-media">
+          <img src="assets/projects/thrivalry.jpg" alt="Thrivalry App preview" loading="lazy" onclick="openLightbox(this.src, this.alt)" onerror="this.closest('.project-media').style.display='none'">
+        </div>
         <h3>Thrivalry App</h3>
         <p>AI-powered campaign management platform that organizes school-vs-school community service campaigns in partnership with nonprofit organizations. Uses Azure OpenAI to pair contestants together based on interests and experience. Built as an intern project with other IBT interns at Cox Enterprises.</p>
         <span class="tag">Next.js</span><span class="tag">React</span><span class="tag">Python</span><span class="tag">Azure Functions</span><span class="tag">Node.js</span><span class="tag">Git</span>
       </div>
-      <div class="entry">
+      <div class="entry project-card">
+        <div class="project-media">
+          <img src="assets/projects/drone.jpg" alt="AI Powered Drone preview" loading="lazy" onclick="openLightbox(this.src, this.alt)" onerror="this.closest('.project-media').style.display='none'">
+        </div>
         <h3>AI Powered Drone</h3>
         <p>A program built in VS Code and Unity using an Anthropic LLM for drones to identify targets, move towards them, and complete missions — with AI vision.</p>
         <span class="tag">Unity</span><span class="tag">Claude API</span><span class="tag">AI Vision</span>
       </div>
-      <div class="entry">
+      <div class="entry project-card">
+        <div class="project-media">
+          <video controls preload="none" playsinline poster="assets/projects/assignment-manager-poster.jpg" onerror="this.closest('.project-media').style.display='none'">
+            <source src="assets/projects/assignment-manager.mp4" type="video/mp4">
+          </video>
+        </div>
         <h3>Assignment Manager</h3>
         <p>Used by GHC professors. Built an assignment builder that works with GitLab, PyCharm, and Claude to send out problem set labs — automating a manual process for professors, saving time to invest into students. Includes a chat bot so professors can create assignments with a prompt.</p>
         <span class="tag">Python</span><span class="tag">GitLab API</span><span class="tag">Claude API</span><span class="tag">SQLite</span><span class="tag">Textual</span>

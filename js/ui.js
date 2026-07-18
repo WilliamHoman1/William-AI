@@ -1,3 +1,37 @@
+// ---------- Boot sequence: brief HUD-style intro, skippable, auto-dismisses ----------
+(function boot(){
+  const screen = document.getElementById('bootScreen');
+  const linesEl = document.getElementById('bootLines');
+  if(!screen || !linesEl) return;
+
+  const lines = [
+    '> SYSTEMS INITIALIZING...',
+    '> LOADING NEURAL CORE...',
+    '> CALIBRATING PARTICLE FIELD...',
+    '> WELCOME. WILLIAMAI ONLINE.',
+  ];
+
+  const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(prefersReduced){ screen.remove(); return; }
+
+  lines.forEach((text, i) => {
+    const div = document.createElement('div');
+    div.className = 'boot-line' + (i === lines.length - 1 ? ' final' : '');
+    div.textContent = text;
+    linesEl.appendChild(div);
+    setTimeout(() => div.classList.add('show'), i * 480);
+  });
+
+  let dismissed = false;
+  window.skipBoot = function(){
+    if(dismissed) return;
+    dismissed = true;
+    screen.classList.add('hidden');
+    setTimeout(() => screen.remove(), 650);
+  };
+  setTimeout(window.skipBoot, lines.length * 480 + 900);
+})();
+
 // ---------- Side rail bars (metallic, no icons/lines) ----------
 // all content topics live on the left rail now; the right side is reserved
 // for the chat drawer, which the orb opens directly (see openChat/closeChat below).
@@ -377,6 +411,32 @@ if('speechSynthesis' in window){
 }
 
 let currentAudio = null;
+let browserPulseDecayTimer = null;
+
+// ---------- Speech-reactive pulse: while the AI is talking, the orb pulses
+// with the actual amplitude of the audio (same RMS technique as the mic
+// pulse above), so it visibly reacts syllable-to-syllable instead of just
+// holding one flat "speaking" pose. ----------
+let speakAudioCtx = null, speakAnalyser = null, speakDataArray = null, speakRafId = null;
+
+function pumpSpeakLevel(){
+  if(!speakAnalyser) return;
+  speakAnalyser.getByteTimeDomainData(speakDataArray);
+  let sumSq = 0;
+  for(let i = 0; i < speakDataArray.length; i++){
+    const v = (speakDataArray[i] - 128) / 128;
+    sumSq += v * v;
+  }
+  const rms = Math.sqrt(sumSq / speakDataArray.length);
+  reactorPulse = 1 + Math.min(rms * 10, 2.6);
+  speakRafId = requestAnimationFrame(pumpSpeakLevel);
+}
+
+function stopSpeakAnalysis(){
+  if(speakRafId){ cancelAnimationFrame(speakRafId); speakRafId = null; }
+  speakAnalyser = null;
+  reactorPulse = 1;
+}
 
 function toggleVoiceOutput(){
   voiceOutputEnabled = !voiceOutputEnabled;
@@ -385,6 +445,7 @@ function toggleVoiceOutput(){
   if(!voiceOutputEnabled){
     window.speechSynthesis.cancel();
     if(currentAudio){ currentAudio.pause(); currentAudio = null; }
+    stopSpeakAnalysis();
   }
 }
 
@@ -400,8 +461,15 @@ function speakBrowser(text){
   if(selectedVoice) utter.voice = selectedVoice;
   utter.rate = 1.02;
   utter.pitch = 1.0;
-  utter.onstart = () => { reactorPulse = 2.4; };
-  utter.onend = () => { reactorPulse = 1; };
+  utter.onstart = () => { reactorPulse = 2.2; };
+  // speechSynthesis exposes no amplitude data, but onboundary fires roughly
+  // once per word/syllable — use it to fake a rhythmic pulse in sync with speech.
+  utter.onboundary = () => {
+    reactorPulse = 2.8;
+    clearTimeout(browserPulseDecayTimer);
+    browserPulseDecayTimer = setTimeout(() => { reactorPulse = 1.8; }, 90);
+  };
+  utter.onend = () => { clearTimeout(browserPulseDecayTimer); reactorPulse = 1; };
   window.speechSynthesis.speak(utter);
 }
 
@@ -419,11 +487,29 @@ async function speak(text){
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     if(currentAudio){ currentAudio.pause(); }
+    stopSpeakAnalysis();
     const audio = new Audio(url);
     currentAudio = audio;
-    audio.onplay = () => { reactorPulse = 2.4; };
-    audio.onended = () => { reactorPulse = 1; URL.revokeObjectURL(url); };
-    audio.onerror = () => { reactorPulse = 1; URL.revokeObjectURL(url); };
+
+    // route playback through an AnalyserNode so the orb pulses with the
+    // real amplitude of the voice, syllable to syllable — falls back to a
+    // flat pulse if the browser blocks the audio graph for any reason.
+    let analysisReady = false;
+    try{
+      if(!speakAudioCtx) speakAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if(speakAudioCtx.state === 'suspended') await speakAudioCtx.resume();
+      const source = speakAudioCtx.createMediaElementSource(audio);
+      speakAnalyser = speakAudioCtx.createAnalyser();
+      speakAnalyser.fftSize = 256;
+      speakDataArray = new Uint8Array(speakAnalyser.frequencyBinCount);
+      source.connect(speakAnalyser);
+      speakAnalyser.connect(speakAudioCtx.destination);
+      analysisReady = true;
+    }catch(e){ /* amplitude analysis unavailable — flat pulse fallback below */ }
+
+    audio.onplay = () => { if(analysisReady) pumpSpeakLevel(); else reactorPulse = 2.4; };
+    audio.onended = () => { stopSpeakAnalysis(); URL.revokeObjectURL(url); };
+    audio.onerror = () => { stopSpeakAnalysis(); URL.revokeObjectURL(url); };
     if(!voiceOutputEnabled) return; // muted while we were fetching
     await audio.play();
   }catch(err){

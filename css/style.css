@@ -9,6 +9,8 @@
 }
 *{box-sizing:border-box;}
 html,body{height:100%;margin:0;}
+/* custom HUD reticle cursor — desktop/fine-pointer only, so touch devices
+   keep the OS default instead of a stray cursor icon */
 body{
   font-family:'Courier New',ui-monospace,monospace;
   background:radial-gradient(circle at 50% 30%, var(--bg2), var(--bg) 70%);
@@ -32,18 +34,41 @@ body::after{
 .header{text-align:center;margin-bottom:6px;position:relative;z-index:5;}
 .header .brand{font-size:13px;letter-spacing:6px;color:var(--dim);text-transform:uppercase;}
 .header h1{
-  margin:6px 0 0;font-size:30px;font-weight:700;letter-spacing:1px;
-  color:var(--white);text-shadow:var(--glow);
+  margin:6px 0 0;font-size:28px;font-weight:600;letter-spacing:3px;
+  color:var(--white);text-shadow:0 0 14px rgba(120,150,255,0.4);
 }
 .header h1 span{
-  background:linear-gradient(120deg, #ffcf7a, #ff9d3d 55%, #ff7a33);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-  text-shadow:none;
-  filter:drop-shadow(0 0 12px rgba(255,157,61,0.55));
+  color:var(--blue);
+  text-shadow:0 0 16px rgba(90,215,255,0.6);
+  font-weight:600;
 }
 .status-line{
   font-size:11px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;
   margin:4px 0 10px;height:14px;z-index:5;text-align:center;
+}
+
+/* ---------- Boot sequence: brief HUD-style intro before the site reveals itself ---------- */
+.boot-screen{
+  position:fixed;inset:0;z-index:200;
+  background:radial-gradient(circle at 50% 30%, var(--bg2), var(--bg) 70%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;cursor:pointer;
+  transition:opacity .6s ease;
+}
+.boot-screen.hidden{ opacity:0;pointer-events:none; }
+.boot-lines{
+  font-family:'Courier New',ui-monospace,monospace;
+  font-size:13px;letter-spacing:1.5px;color:var(--blue);text-transform:uppercase;
+  text-align:center;min-height:120px;
+}
+.boot-lines .boot-line{ opacity:0;margin:6px 0;transition:opacity .3s ease; }
+.boot-lines .boot-line.show{ opacity:1; }
+.boot-lines .boot-line.final{ color:var(--white); }
+.boot-hint{
+  font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;opacity:.6;
+}
+@media (prefers-reduced-motion: reduce){
+  .boot-screen{ display:none; }
 }
 
 /* ---------- Main stage: side bars + centered particle system ---------- */
@@ -124,6 +149,20 @@ body::after{
   display:block;
   pointer-events:none;
 }
+/* cheap "poor man's bloom": a second canvas redrawn from the source canvas
+   each frame, then blurred + brightened via CSS filter and screen-blended
+   on top — gives a soft glow without a full postprocessing pipeline (which
+   would fight the transparent-canvas-over-gradient layering these use). */
+#coreParticlesGlow{
+  position:absolute;
+  inset:0;
+  width:100%;height:100%;
+  display:block;
+  pointer-events:none;
+  mix-blend-mode:screen;
+  filter:blur(7px) brightness(1.6) saturate(1.25);
+  opacity:0.65;
+}
 #particleField{
   position:fixed;
   inset:0;
@@ -131,6 +170,17 @@ body::after{
   display:block;
   z-index:0;
   pointer-events:none;
+}
+#particleFieldGlow{
+  position:fixed;
+  inset:0;
+  width:100vw;height:100vh;
+  display:block;
+  z-index:0;
+  pointer-events:none;
+  mix-blend-mode:screen;
+  filter:blur(5px) brightness(1.5) saturate(1.2);
+  opacity:0.5;
 }
 .tap-hint{
   position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);
@@ -225,6 +275,16 @@ body::after{
 .entry{ margin-bottom:16px; }
 .entry h3{ margin:0 0 6px;color:var(--white);font-size:14px;letter-spacing:1px; }
 .entry p{ margin:0 0 4px;color:#c9d6ff; }
+.project-card{ margin-bottom:22px; }
+.project-media{
+  width:100%;border-radius:8px;overflow:hidden;margin-bottom:8px;
+  background:rgba(120,150,255,0.06);border:1px solid rgba(120,150,255,0.18);
+}
+.project-media img,.project-media video{
+  width:100%;max-height:220px;object-fit:cover;display:block;
+}
+.project-media img{ cursor:pointer; }
+.project-media video{ max-height:none;background:#000; }
 .tag{
   display:inline-block;border:1px solid rgba(120,150,255,0.35);border-radius:20px;
   padding:2px 9px;font-size:10.5px;color:var(--dim);margin:2px 4px 0 0;
@@ -350,4 +410,17 @@ body::after{
 }
 @media (prefers-reduced-motion: reduce){
   .core-stage,.panel,.chat-drawer,.resume-modal,.lightbox{transition:none;}
+}
+
+/* custom HUD reticle cursor — desktop/fine-pointer only, so touch devices
+   keep the OS default instead of a stray cursor icon. Placed last in the
+   cascade so it wins over the various per-element `cursor:pointer` rules
+   above at equal specificity. */
+@media (pointer: fine){
+  body{ cursor:url("../assets/cursor-reticle.svg") 14 14, auto; }
+  a, button, .bar, .tab-btn, .core-stage, .icon-btn, .back,
+  .project-media img, .lightbox{
+    cursor:url("../assets/cursor-reticle-active.svg") 14 14, pointer;
+  }
+  input[type="text"], textarea{ cursor:text; }
 }
