@@ -19,6 +19,12 @@
   let uPerspective = 1;
   function resize(){
     const s = wrap.clientWidth;
+    // wrap (#coreStage) is display:none while an info panel is open, so a
+    // resize event firing in that window (e.g. toggling video fullscreen)
+    // would read 0 here and shrink the renderer to nothing permanently,
+    // since no further resize event fires once the core is shown again.
+    // coreResize() (called from closePanel) covers that recovery case.
+    if(!s) return;
     renderer.setSize(s, s, false);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
     camera.aspect = 1;
@@ -188,6 +194,7 @@
 
   resize();
   window.addEventListener('resize', resize);
+  coreResize = resize;
 
   // orbiting halo rings, tilted at different angles — the JARVIS-reactor look
   // (small static particle counts rotated via their pivot — already cheap, left as-is)
@@ -224,6 +231,186 @@
     reactor.add(pivot);
     return { points, speed: cfg.speed };
   });
+
+  // ----- electric "plasma" filaments: jagged blue-violet lightning arcs
+  // radiating from near the center out past the core shell, layered on top
+  // of the warm particle sphere/rings above. Bolt shapes are baked in on the
+  // CPU (random per-segment jaggedness, once) — the shader only adds a small
+  // live wiggle + a per-bolt on/off flicker, so it reads as "alive" electricity
+  // without recomputing geometry every frame. Intensity ties into curPulse/
+  // curListen below, so it visibly flares while the orb listens or speaks.
+  const BOLT_COUNT = 22;
+  const SEG_COUNT = 9; // 9 segments -> 10 points per bolt
+  // real GL line width is capped at 1px on most browsers/drivers, so a single
+  // strand per bolt reads as an invisible hairline — fake thickness/glow by
+  // drawing 3 parallel strands per bolt (bright core + two dimmer side rails)
+  const STRAND_OFFSETS = [-0.045, 0, 0.045];
+  const STRAND_WEIGHTS = [0.55, 1.0, 0.55];
+  const boltPalette = [0x5ad7ff, 0x8ec9ff, 0xb98bff, 0x9fe8ff];
+  const boltPositions = [], boltSeedAttr = [], boltTAttr = [], boltPerpAttr = [], boltColAttr = [];
+  for(let b=0; b<BOLT_COUNT; b++){
+    const u = Math.random(), v = Math.random();
+    const theta = 2*Math.PI*u, phi = Math.acos(2*v-1);
+    const dir = new THREE.Vector3(Math.sin(phi)*Math.cos(theta), Math.sin(phi)*Math.sin(theta), Math.cos(phi));
+    const up = Math.abs(dir.y) < 0.99 ? new THREE.Vector3(0,1,0) : new THREE.Vector3(1,0,0);
+    const perp1 = new THREE.Vector3().crossVectors(dir, up).normalize();
+    const perp2 = new THREE.Vector3().crossVectors(dir, perp1).normalize();
+
+    const r0 = 0.18, r1 = 1.75 + Math.random()*0.95;
+    const jitterAmp = 0.32 + Math.random()*0.28;
+    tmpColor.set(boltPalette[b % boltPalette.length]);
+
+    const pts = [];
+    for(let s=0; s<=SEG_COUNT; s++){
+      const t = s / SEG_COUNT;
+      const r = r0 + (r1-r0) * t;
+      const envelope = Math.sin(t * Math.PI); // tapers jaggedness to 0 at both ends
+      const j1 = (Math.random()-0.5) * jitterAmp * envelope;
+      const j2 = (Math.random()-0.5) * jitterAmp * envelope;
+      pts.push({ base: dir.clone().multiplyScalar(r).addScaledVector(perp1, j1).addScaledVector(perp2, j2), envelope });
+    }
+    STRAND_OFFSETS.forEach((off, si) => {
+      const weight = STRAND_WEIGHTS[si];
+      for(let s=0; s<SEG_COUNT; s++){
+        const tA = s / SEG_COUNT, tB = (s+1) / SEG_COUNT;
+        [[pts[s], tA], [pts[s+1], tB]].forEach(([pt, t]) => {
+          const p = pt.base.clone().addScaledVector(perp2, off * pt.envelope);
+          boltPositions.push(p.x, p.y, p.z);
+          boltSeedAttr.push(b);
+          boltTAttr.push(t);
+          boltPerpAttr.push(perp1.x, perp1.y, perp1.z);
+          boltColAttr.push(tmpColor.r * weight, tmpColor.g * weight, tmpColor.b * weight);
+        });
+      }
+    });
+  }
+  const lightningGeo = new THREE.BufferGeometry();
+  lightningGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(boltPositions), 3));
+  lightningGeo.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array(boltSeedAttr), 1));
+  lightningGeo.setAttribute('aT', new THREE.BufferAttribute(new Float32Array(boltTAttr), 1));
+  lightningGeo.setAttribute('aPerp', new THREE.BufferAttribute(new Float32Array(boltPerpAttr), 3));
+  lightningGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(boltColAttr), 3));
+  const lightningMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uPulse: { value: 0.4 }, uOpacity: { value: 1.6 } },
+    vertexShader: `
+      uniform float uTime, uPulse, uOpacity;
+      attribute float aSeed, aT;
+      attribute vec3 aPerp;
+      attribute vec3 color;
+      varying vec3 vColor;
+      varying float vAlpha;
+      float hash11(float n){ return fract(sin(n) * 43758.5453123); }
+      void main(){
+        float h = hash11(aSeed * 13.7 + 4.21);
+        // each bolt flips on/off a few times a second, offset by its own seed —
+        // reads as chaotic sparking rather than one synced pulse
+        float flickerPhase = floor(uTime * 3.0 + h * 10.0);
+        float flicker = step(0.3, hash11(flickerPhase + aSeed * 91.7));
+        float envelope = pow(sin(clamp(aT, 0.0, 1.0) * 3.14159265), 0.6);
+        float wiggle = sin(uTime * 2.2 + aT * 8.0 + h * 6.283185) * 0.07 * envelope;
+        vec3 pos = position + aPerp * wiggle;
+        vAlpha = flicker * envelope * uOpacity * uPulse;
+        vColor = color;
+        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vColor;
+      varying float vAlpha;
+      void main(){ gl_FragColor = vec4(vColor, clamp(vAlpha, 0.0, 1.0)); }
+    `,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  const lightning = new THREE.LineSegments(lightningGeo, lightningMat);
+  lightning.frustumCulled = false;
+  reactor.add(lightning);
+
+  // ----- "seeker" bolts: unlike the ambient sparks above (baked-in random
+  // directions), these continuously re-aim toward wherever the cursor/finger
+  // currently is — direction comes from a uSeekDir uniform recomputed every
+  // frame in animate() below, not from baked geometry, so only jitter/strand
+  // offsets are baked in here. Added directly to the scene (not `reactor`)
+  // so the reactor's own rotation doesn't compound with the aim direction.
+  const SEEKER_COUNT = 2;
+  const seekerColors = [0x9fe8ff, 0xc9a9ff];
+  const seekPositions = [], seekSeedAttr = [], seekTAttr = [], seekJ1Attr = [], seekJ2Attr = [], seekColAttr = [];
+  for(let b=0; b<SEEKER_COUNT; b++){
+    tmpColor.set(seekerColors[b % seekerColors.length]);
+    const boltBiasJ1 = (b - (SEEKER_COUNT-1)/2) * 0.12; // spreads multiple seeker bolts apart slightly
+    const pts = [];
+    for(let s=0; s<=SEG_COUNT; s++){
+      const t = s / SEG_COUNT;
+      const envelope = Math.sin(t * Math.PI);
+      pts.push({
+        t,
+        j1: boltBiasJ1 + (Math.random()-0.5) * 0.35 * envelope,
+        j2: (Math.random()-0.5) * 0.35 * envelope,
+        envelope,
+      });
+    }
+    STRAND_OFFSETS.forEach((off, si) => {
+      const weight = STRAND_WEIGHTS[si];
+      for(let s=0; s<SEG_COUNT; s++){
+        [pts[s], pts[s+1]].forEach(pt => {
+          seekPositions.push(0, 0, 0);
+          seekSeedAttr.push(b);
+          seekTAttr.push(pt.t);
+          seekJ1Attr.push(pt.j1);
+          seekJ2Attr.push(pt.j2 + off * pt.envelope);
+          seekColAttr.push(tmpColor.r * weight, tmpColor.g * weight, tmpColor.b * weight);
+        });
+      }
+    });
+  }
+  const seekGeo = new THREE.BufferGeometry();
+  seekGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(seekPositions), 3));
+  seekGeo.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array(seekSeedAttr), 1));
+  seekGeo.setAttribute('aT', new THREE.BufferAttribute(new Float32Array(seekTAttr), 1));
+  seekGeo.setAttribute('aJ1', new THREE.BufferAttribute(new Float32Array(seekJ1Attr), 1));
+  seekGeo.setAttribute('aJ2', new THREE.BufferAttribute(new Float32Array(seekJ2Attr), 1));
+  seekGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(seekColAttr), 3));
+  const seekMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 }, uPulse: { value: 0.9 }, uOpacity: { value: 1.7 },
+      uSeekDir: { value: new THREE.Vector3(0, 0, 1) },
+    },
+    vertexShader: `
+      uniform float uTime, uPulse, uOpacity;
+      uniform vec3 uSeekDir;
+      attribute float aSeed, aT, aJ1, aJ2;
+      attribute vec3 color;
+      varying vec3 vColor;
+      varying float vAlpha;
+      float hash11(float n){ return fract(sin(n) * 43758.5453123); }
+      void main(){
+        vec3 dir = normalize(uSeekDir);
+        vec3 up = abs(dir.y) < 0.99 ? vec3(0.0,1.0,0.0) : vec3(1.0,0.0,0.0);
+        vec3 perp1 = normalize(cross(dir, up));
+        vec3 perp2 = normalize(cross(dir, perp1));
+        float t = clamp(aT, 0.0, 1.0);
+        float r = mix(0.2, 3.3, t);
+        float h = hash11(aSeed * 13.7 + 4.21);
+        float wiggle = sin(uTime * 2.6 + t * 8.0 + h * 6.283185) * 0.05;
+        vec3 pos = dir * r + perp1 * (aJ1 + wiggle) + perp2 * aJ2;
+        float envelope = pow(sin(t * 3.14159265), 0.4);
+        vAlpha = envelope * uOpacity * uPulse;
+        vColor = color;
+        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vColor;
+      varying float vAlpha;
+      void main(){ gl_FragColor = vec4(vColor, clamp(vAlpha, 0.0, 1.0)); }
+    `,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  const seekerBolts = new THREE.LineSegments(seekGeo, seekMat);
+  seekerBolts.frustumCulled = false;
+  scene.add(seekerBolts);
+  const seekWorld = new THREE.Vector3();
 
   // the core reactor is the ONLY particle system that tracks the pointer —
   // continuous follow (not just a hover boolean), tracked globally so it keeps
@@ -290,6 +477,16 @@
     coreMat.uniforms.uSize.value = 0.045 * (1 + Math.sin(t*1.4)*0.18*curPulse);
 
     coreSphere.rotation.y += 0.003 + curHover*0.004;
+
+    // ambient sparking at idle, flaring brighter while listening/speaking
+    lightningMat.uniforms.uTime.value = t;
+    lightningMat.uniforms.uPulse.value = 0.75 + Math.min(curPulse - 1, 2.5) * 0.7 + curListen * 0.6;
+
+    // seeker bolts re-aim toward the cursor/finger every frame
+    seekWorld.set(curPtr.x, curPtr.y, 0.5).unproject(camera);
+    seekMat.uniforms.uSeekDir.value.copy(seekWorld.sub(camera.position).normalize());
+    seekMat.uniforms.uTime.value = t;
+    seekMat.uniforms.uPulse.value = lightningMat.uniforms.uPulse.value;
 
     const ringSpread = 1 + curHover * 0.2;
     rings.forEach(r => {

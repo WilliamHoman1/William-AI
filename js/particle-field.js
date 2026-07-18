@@ -85,9 +85,9 @@
       uZNear:       { value: Z_NEAR },
       uZFar:        { value: Z_FAR },
       uPartTime:    { value: -999 },
-      uSize:        { value: 0.09 },
+      uSize:        { value: 0.075 },
       uPerspective: { value: 1 },
-      uOpacity:     { value: 0.8 },
+      uOpacity:     { value: 0.55 },
     },
     vertexShader: `
       uniform float uTime, uSpeed, uZNear, uZFar, uPartTime, uSize, uPerspective;

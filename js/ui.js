@@ -93,6 +93,10 @@ function closePanel(){
   coreStage.classList.remove('spin-out');
   document.getElementById('statusLine').textContent = 'SYSTEMS ONLINE — TAP THE CORE TO TALK';
   partField();
+  // the core's WebGL canvas can get resized to 0 while its container was
+  // display:none (e.g. a video's fullscreen toggle firing a window resize
+  // event mid-panel) — recompute its size now that it's visible again.
+  requestAnimationFrame(coreResize);
 }
 
 // ---------- Chat drawer: unlike the content panels above, this never hides
@@ -209,6 +213,8 @@ function handleNavigation(text){
 }
 
 async function send(){
+  primeAudio(); // must run synchronously here, before the first await below,
+                // or Safari/iOS will block the reply's audio.play() later
   const input = document.getElementById('input');
   const text = input.value.trim();
   if(!text) return;
@@ -346,6 +352,10 @@ function toggleListening(){
     micBtn.classList.add('listening');
     reactorListening = true;
     startMicAnalysis();
+    // primes the shared <audio> element/AudioContext now, within this real
+    // click — the eventual reply's speak() call happens from an async
+    // speech-recognition callback, which Safari/iOS won't treat as a gesture
+    primeAudio();
   }catch(err){ /* recognition already running */ }
 }
 
@@ -410,7 +420,13 @@ if('speechSynthesis' in window){
   voiceRow.style.display = 'none';
 }
 
-let currentAudio = null;
+// a single persistent <audio> element, reused for every reply, instead of
+// `new Audio()` per call — Safari/iOS revoke a page's permission to call
+// .play() programmatically once too much time (an await fetch(), in our
+// case) has passed since the triggering click/tap. Priming THIS SAME element
+// with a play()+pause() synchronously inside the click handler (see
+// primeAudio() below) keeps it "unlocked" for later async .play() calls.
+let currentAudio = new Audio();
 let browserPulseDecayTimer = null;
 
 // ---------- Speech-reactive pulse: while the AI is talking, the orb pulses
@@ -418,6 +434,37 @@ let browserPulseDecayTimer = null;
 // pulse above), so it visibly reacts syllable-to-syllable instead of just
 // holding one flat "speaking" pose. ----------
 let speakAudioCtx = null, speakAnalyser = null, speakDataArray = null, speakRafId = null;
+let speakGraphReady = false; // createMediaElementSource can only be called once per <audio> element ever
+
+// sets up the AnalyserNode graph on `currentAudio` once, and — critically —
+// resumes/creates the AudioContext, which (like audio.play()) also requires
+// a user-gesture context in Safari/iOS. Safe to call repeatedly.
+function ensureSpeakGraph(){
+  if(speakGraphReady) return true;
+  try{
+    if(!speakAudioCtx) speakAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = speakAudioCtx.createMediaElementSource(currentAudio);
+    speakAnalyser = speakAudioCtx.createAnalyser();
+    speakAnalyser.fftSize = 256;
+    speakDataArray = new Uint8Array(speakAnalyser.frequencyBinCount);
+    source.connect(speakAnalyser);
+    speakAnalyser.connect(speakAudioCtx.destination);
+    speakGraphReady = true;
+  }catch(e){ /* amplitude analysis unavailable — flat pulse fallback in speak() */ }
+  return speakGraphReady;
+}
+
+// call this synchronously from within a real click/tap handler (before any
+// await) to "unlock" both the shared <audio> element and its AudioContext
+// for later programmatic playback triggered from async code (fetch replies,
+// speech-recognition callbacks) that no longer counts as a user gesture.
+function primeAudio(){
+  if(!voiceOutputEnabled) return;
+  ensureSpeakGraph();
+  if(speakAudioCtx && speakAudioCtx.state === 'suspended') speakAudioCtx.resume();
+  currentAudio.play().catch(() => {});
+  currentAudio.pause();
+}
 
 function pumpSpeakLevel(){
   if(!speakAnalyser) return;
@@ -434,7 +481,6 @@ function pumpSpeakLevel(){
 
 function stopSpeakAnalysis(){
   if(speakRafId){ cancelAnimationFrame(speakRafId); speakRafId = null; }
-  speakAnalyser = null;
   reactorPulse = 1;
 }
 
@@ -444,7 +490,7 @@ function toggleVoiceOutput(){
   voiceToggleBtn.textContent = voiceOutputEnabled ? 'VOICE' : 'MUTED';
   if(!voiceOutputEnabled){
     window.speechSynthesis.cancel();
-    if(currentAudio){ currentAudio.pause(); currentAudio = null; }
+    currentAudio.pause();
     stopSpeakAnalysis();
   }
 }
@@ -486,32 +532,23 @@ async function speak(text){
 
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
-    if(currentAudio){ currentAudio.pause(); }
+    const prevUrl = currentAudio.dataset.blobUrl;
+    currentAudio.pause();
     stopSpeakAnalysis();
-    const audio = new Audio(url);
-    currentAudio = audio;
 
     // route playback through an AnalyserNode so the orb pulses with the
     // real amplitude of the voice, syllable to syllable — falls back to a
     // flat pulse if the browser blocks the audio graph for any reason.
-    let analysisReady = false;
-    try{
-      if(!speakAudioCtx) speakAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if(speakAudioCtx.state === 'suspended') await speakAudioCtx.resume();
-      const source = speakAudioCtx.createMediaElementSource(audio);
-      speakAnalyser = speakAudioCtx.createAnalyser();
-      speakAnalyser.fftSize = 256;
-      speakDataArray = new Uint8Array(speakAnalyser.frequencyBinCount);
-      source.connect(speakAnalyser);
-      speakAnalyser.connect(speakAudioCtx.destination);
-      analysisReady = true;
-    }catch(e){ /* amplitude analysis unavailable — flat pulse fallback below */ }
+    const analysisReady = ensureSpeakGraph();
 
-    audio.onplay = () => { if(analysisReady) pumpSpeakLevel(); else reactorPulse = 2.4; };
-    audio.onended = () => { stopSpeakAnalysis(); URL.revokeObjectURL(url); };
-    audio.onerror = () => { stopSpeakAnalysis(); URL.revokeObjectURL(url); };
+    currentAudio.src = url;
+    currentAudio.dataset.blobUrl = url;
+    currentAudio.onplay = () => { if(analysisReady) pumpSpeakLevel(); else reactorPulse = 2.4; };
+    currentAudio.onended = () => { stopSpeakAnalysis(); URL.revokeObjectURL(url); };
+    currentAudio.onerror = () => { stopSpeakAnalysis(); URL.revokeObjectURL(url); };
+    if(prevUrl) URL.revokeObjectURL(prevUrl);
     if(!voiceOutputEnabled) return; // muted while we were fetching
-    await audio.play();
+    await currentAudio.play();
   }catch(err){
     speakBrowser(text); // ElevenLabs not configured / request failed / quota used up
   }
