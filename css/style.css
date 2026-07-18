@@ -235,13 +235,30 @@ body::after{
 .photo-grid img{
   aspect-ratio:1/1;width:100%;object-fit:cover;
   border:1px solid rgba(120,150,255,0.35);border-radius:6px;background:rgba(120,150,255,0.06);
-  display:block;
+  display:block;cursor:pointer;
 }
 .photo-grid figcaption{
   margin-top:6px;font-size:11px;line-height:1.4;color:var(--dim);
 }
 @media (max-width:520px){
   .photo-grid{ grid-template-columns:1fr; }
+}
+
+/* ---------- Photo lightbox: full, uncropped image on click ---------- */
+.lightbox{
+  position:fixed;inset:0;z-index:30;
+  background:rgba(2,3,8,0.92);
+  display:flex;align-items:center;justify-content:center;
+  padding:32px;
+  opacity:0;pointer-events:none;
+  transition:opacity .3s ease;
+}
+.lightbox.open{ opacity:1;pointer-events:auto; }
+.lightbox img{
+  max-width:100%;max-height:100%;
+  object-fit:contain;
+  border-radius:6px;
+  box-shadow:var(--glow);
 }
 
 /* Chat panel specifics */
@@ -300,6 +317,11 @@ body::after{
 #voiceToggle.muted{ color:var(--dim);border-color:rgba(120,150,255,0.25);opacity:0.6; }
 
 @media (max-width: 900px){
+  /* the home screen (orb + rail) should never scroll on mobile — panels and
+     the chat drawer are fixed-position overlays with their own internal
+     scroll areas, so locking the page itself doesn't affect them */
+  html,body{ height:100dvh; overflow:hidden; overscroll-behavior:none; }
+
   .stage{ flex-direction:column; gap:16px; }
   .rail{ flex-direction:row; flex-wrap:wrap; justify-content:center; min-width:0; }
 
@@ -327,5 +349,5 @@ body::after{
   }
 }
 @media (prefers-reduced-motion: reduce){
-  .core-stage,.panel,.chat-drawer,.resume-modal{transition:none;}
+  .core-stage,.panel,.chat-drawer,.resume-modal,.lightbox{transition:none;}
 }

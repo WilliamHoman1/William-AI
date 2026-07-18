@@ -71,6 +71,13 @@
         <span class="tag">VS Code</span><span class="tag">Claude API</span>
       </div>
       <div class="entry">
+        <h3>Languages</h3>
+        <span class="tag">Python</span><span class="tag">JavaScript</span>
+        <span class="tag">HTML</span><span class="tag">CSS</span>
+        <span class="tag">GLSL</span>
+        <p style="margin-top:8px;color:var(--dim);font-size:12px;">JavaScript, HTML, CSS, and GLSL (shader code) are what this site — WilliamAI — is actually built with.</p>
+      </div>
+      <div class="entry">
         <h3>Certifications</h3>
         <p>Anthropic Generative AI Development · UiPath Automation Associate Training · UiPath Automation Explorer Training · Office 365</p>
       </div>
@@ -78,8 +85,23 @@
 
     <div class="tab-content" id="tab-projects">
       <div class="entry">
+        <h3>WilliamAI (this site)</h3>
+        <p>A 3D particle AI hub portfolio with a Claude-powered chatbot — GPU-shader particle system (Three.js), voice input/output.</p>
+        <span class="tag">Three.js</span><span class="tag">Claude API</span><span class="tag">JavaScript</span><span class="tag">Vercel</span>
+      </div>
+      <div class="entry">
+        <h3>Thrivalry App</h3>
+        <p>AI-powered campaign management platform that organizes school-vs-school community service campaigns in partnership with nonprofit organizations. Uses Azure OpenAI to pair contestants together based on interests and experience. Built as an intern project with other IBT interns at Cox Enterprises.</p>
+        <span class="tag">Next.js</span><span class="tag">React</span><span class="tag">Python</span><span class="tag">Azure Functions</span><span class="tag">Node.js</span><span class="tag">Git</span>
+      </div>
+      <div class="entry">
+        <h3>AI Powered Drone</h3>
+        <p>A program built in VS Code and Unity using an Anthropic LLM for drones to identify targets, move towards them, and complete missions — with AI vision.</p>
+        <span class="tag">Unity</span><span class="tag">Claude API</span><span class="tag">AI Vision</span>
+      </div>
+      <div class="entry">
         <h3>Assignment Manager</h3>
-        <p>Used by GHC professors. Python, GitLab API, Claude API, backend + frontend (Textual), SQLite database. Built an assignment builder that works with GitLab, PyCharm, and Claude to send out problem set labs — automating a manual process for professors, saving time to invest into students. Includes a chat bot so professors can create assignments with a prompt.</p>
+        <p>Used by GHC professors. Built an assignment builder that works with GitLab, PyCharm, and Claude to send out problem set labs — automating a manual process for professors, saving time to invest into students. Includes a chat bot so professors can create assignments with a prompt.</p>
         <span class="tag">Python</span><span class="tag">GitLab API</span><span class="tag">Claude API</span><span class="tag">SQLite</span><span class="tag">Textual</span>
       </div>
       <div class="entry">
@@ -87,33 +109,28 @@
         <p>Python text-based adventure game with multiple features, visuals, and timed decisions.</p>
         <span class="tag">Python</span>
       </div>
-      <div class="entry">
-        <h3>WilliamAI (this site)</h3>
-        <p>A 3D particle AI hub with a Claude-powered chatbot — GPU-shader particle system (Three.js), voice input/output, and this portfolio.</p>
-        <span class="tag">Three.js</span><span class="tag">Claude API</span><span class="tag">Vercel</span>
-      </div>
     </div>
 
     <div class="tab-content" id="tab-photos">
       <div class="photo-grid">
         <figure>
-          <img src="assets/photos/cox-headshot.jpg" alt="Cox Enterprises Headshot 2026" loading="lazy" onerror="this.closest('figure').style.display='none'">
+          <img src="assets/photos/cox-headshot.jpg" alt="Cox Enterprises Headshot 2026" loading="lazy" onclick="openLightbox(this.src, this.alt)" onerror="this.closest('figure').style.display='none'">
           <figcaption>Cox Enterprises HeadShot 2026</figcaption>
         </figure>
         <figure>
-          <img src="assets/photos/cox-world-cup.jpg" alt="Cox World Cup event" loading="lazy" onerror="this.closest('figure').style.display='none'">
+          <img src="assets/photos/cox-world-cup.jpg" alt="Cox World Cup event" loading="lazy" onclick="openLightbox(this.src, this.alt)" onerror="this.closest('figure').style.display='none'">
           <figcaption>Cox world cup event, networking with fellow interns</figcaption>
         </figure>
         <figure>
-          <img src="assets/photos/cox-5k.jpg" alt="Cox 5k with fellow IBT interns" loading="lazy" onerror="this.closest('figure').style.display='none'">
+          <img src="assets/photos/cox-5k.jpg" alt="Cox 5k with fellow IBT interns" loading="lazy" onclick="openLightbox(this.src, this.alt)" onerror="this.closest('figure').style.display='none'">
           <figcaption>Cox 5k with fellow IBT (Integrated Business Technologies) interns raising money for CERF.</figcaption>
         </figure>
         <figure>
-          <img src="assets/photos/harrison-baseball.jpg" alt="Pitching at Harrison High School" loading="lazy" onerror="this.closest('figure').style.display='none'">
+          <img src="assets/photos/harrison-baseball.jpg" alt="Pitching at Harrison High School" loading="lazy" onclick="openLightbox(this.src, this.alt)" onerror="this.closest('figure').style.display='none'">
           <figcaption>Pitching at Harrison High School</figcaption>
         </figure>
         <figure>
-          <img src="assets/photos/highlands-baseball.jpg" alt="Pitching at Georgia Highlands College" loading="lazy" onerror="this.closest('figure').style.display='none'">
+          <img src="assets/photos/highlands-baseball.jpg" alt="Pitching at Georgia Highlands College" loading="lazy" onclick="openLightbox(this.src, this.alt)" onerror="this.closest('figure').style.display='none'">
           <figcaption>Pitching at Georgia Highlands College</figcaption>
         </figure>
       </div>
@@ -121,11 +138,24 @@
 
     <div class="tab-content" id="tab-history">
       <div class="entry">
-        <h3>Timeline</h3>
-        <p><strong>Harrison High School</strong> — Kennesaw, GA. Graduated May 2023. GPA 4.2, Baseball &amp; Hope Scholarship, National Honors Society, Student Athlete.</p>
-        <p><strong>Georgia Highlands College</strong> — Cartersville, GA. A.S. Computer Science, Graduated Spring 2026. GPA 4.0, Student Athlete: Baseball, President's List x4, NJCAA First Team All-Academic.</p>
-        <p><strong>Cox Enterprises</strong> — Atlanta, GA. AI/Automation Intern, May 2026 – Present. Selected as 1 of 144 interns from 20,000+ applicants company-wide.</p>
-        <p><strong>University of Georgia</strong> — Athens, GA. B.S. Computer Science, Expected Spring 2028.</p>
+        <h3>May 2022 – Jan 2023</h3>
+        <p><strong>Ace Hardware</strong> — Acworth, GA. Sales Associate — customer service, inventory management, top converter of loyalty members for multiple months.</p>
+      </div>
+      <div class="entry">
+        <h3>May 2023</h3>
+        <p><strong>Harrison High School</strong> — Kennesaw, GA. Graduated. GPA 4.2, Baseball &amp; Hope Scholarship, National Honors Society, Student Athlete: Baseball.</p>
+      </div>
+      <div class="entry">
+        <h3>2023 – Spring 2026</h3>
+        <p><strong>Georgia Highlands College</strong> — Cartersville, GA. Associate of Science in Computer Science, GPA 4.0. Student Athlete: Baseball, President's List x4, NJCAA First Team All-Academic.</p>
+      </div>
+      <div class="entry">
+        <h3>May 2026 – Present</h3>
+        <p><strong>Cox Enterprises</strong> — Atlanta, GA. AI/Automation Intern — RPA solutions, agentic AI workflows, UiPath Studio automations. Selected as 1 of 144 interns from 20,000+ applicants company-wide.</p>
+      </div>
+      <div class="entry">
+        <h3>Expected Spring 2028</h3>
+        <p><strong>University of Georgia</strong> — Athens, GA. Bachelor of Science in Computer Science.</p>
       </div>
     </div>
 
@@ -141,6 +171,11 @@
       <iframe id="resumeFrame" title="William Homan Resume"></iframe>
     </div>
 
+    <!-- Photo lightbox: shows the full, uncropped photo instead of the grid's cropped thumbnail -->
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+      <img id="lightboxImg" src="" alt="">
+    </div>
+
     <!-- Chat drawer: separate from the content panel above so the orb stays
          visible and animating (idle / listening / speaking) the whole time
          you're talking to it, instead of spinning away like the info tabs. -->
@@ -150,7 +185,7 @@
         <div class="line sys">// Boot sequence complete. Ask me anything about William — background, skills, or projects.</div>
       </div>
       <div class="voice-row" id="voiceRow">
-        <label for="voiceSelect">Voice</label>
+        <label for="voiceSelect">Fallback voice</label>
         <select id="voiceSelect"></select>
       </div>
       <div class="input-row">

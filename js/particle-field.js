@@ -8,7 +8,7 @@
   let uPerspective = 1;
   function resize(){
     renderer.setSize(window.innerWidth, window.innerHeight, false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     uPerspective = computePerspective(renderer, camera);
@@ -28,7 +28,7 @@
   // clustered nebula / cosmic-web look — clumps of particles around a handful of
   // centers (with a thin scatter of lone stars), instead of flat uniform noise.
   // still no mouse interaction: the only pointer-reactive element is the core reactor.
-  const COUNT = 9500;
+  const COUNT = 13000;
   const CLUSTER_COUNT = 6;
   const clusterCenters = [];
   for(let c=0;c<CLUSTER_COUNT;c++){

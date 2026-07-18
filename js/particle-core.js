@@ -11,7 +11,7 @@
   function resize(){
     const s = wrap.clientWidth;
     renderer.setSize(s, s, false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
     camera.aspect = 1;
     camera.updateProjectionMatrix();
     uPerspective = computePerspective(renderer, camera);
@@ -44,7 +44,7 @@
 
   // dense glowing core sphere — GPU-driven wobble (position is a pure function
   // of uTime + a per-particle phase seed, no CPU per-vertex loop anymore)
-  const CORE_COUNT = 3800;
+  const CORE_COUNT = 5200;
   const corePos = new Float32Array(CORE_COUNT * 3);
   const coreSeed = new Float32Array(CORE_COUNT);
   const coreCol = new Float32Array(CORE_COUNT * 3);
@@ -115,7 +115,7 @@
   // fully GPU-driven: each particle's loop count, life, and burst direction are
   // derived from uTime + a hash function, so there is zero CPU work per frame
   // regardless of FLARE_COUNT.
-  const FLARE_COUNT = 900;
+  const FLARE_COUNT = 1200;
   const flareDummy = new Float32Array(FLARE_COUNT * 3); // unused position slot, geometry needs one
   const flareSeed = new Float32Array(FLARE_COUNT);
   const flareSpeedAttr = new Float32Array(FLARE_COUNT);
@@ -181,10 +181,10 @@
   // orbiting halo rings, tilted at different angles — the JARVIS-reactor look
   // (small static particle counts rotated via their pivot — already cheap, left as-is)
   const ringConfigs = [
-    { radius:1.9, count:760, tiltX:0.15,  tiltZ:0.05,  speed: 0.006,  colorIdx:0 },
-    { radius:2.25,count:820, tiltX:1.15,  tiltZ:0.35,  speed:-0.0045, colorIdx:1 },
-    { radius:2.55,count:880, tiltX:0.55,  tiltZ:-0.85, speed: 0.0038, colorIdx:2 },
-    { radius:2.85,count:700, tiltX:-0.75, tiltZ:0.6,   speed:-0.0052, colorIdx:0 },
+    { radius:1.9, count:920, tiltX:0.15,  tiltZ:0.05,  speed: 0.006,  colorIdx:0 },
+    { radius:2.25,count:980, tiltX:1.15,  tiltZ:0.35,  speed:-0.0045, colorIdx:1 },
+    { radius:2.55,count:1050,tiltX:0.55,  tiltZ:-0.85, speed: 0.0038, colorIdx:2 },
+    { radius:2.85,count:840, tiltX:-0.75, tiltZ:0.6,   speed:-0.0052, colorIdx:0 },
   ];
   const rings = ringConfigs.map(cfg => {
     const positions = new Float32Array(cfg.count * 3);
