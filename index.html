@@ -14,7 +14,7 @@
 
   <div class="header">
     <div class="brand">Homan Systems</div>
-    <h1>WILLIAM // AI</h1>
+    <h1>William<span>AI</span></h1>
   </div>
   <div class="status-line" id="statusLine">SYSTEMS ONLINE — TAP THE CORE TO TALK</div>
 
@@ -37,80 +37,108 @@
       <div class="tab-btn" data-tab="projects">Projects</div>
       <div class="tab-btn" data-tab="photos">Photos</div>
       <div class="tab-btn" data-tab="history">History</div>
-      <div class="tab-btn" data-tab="chat">AI Chat</div>
     </div>
 
     <div class="tab-content" id="tab-about">
       <div class="entry">
-        <h3>William Homan</h3>
-        <p>AI/Automation Engineering Intern at Cox Enterprises, on the AA&A Team — building and maintaining UiPath RPA workflows, Orchestrator integrations, and internal automation tooling.</p>
+        <h3>Welcome to WilliamAI</h3>
+        <p>An Iron Man / J.A.R.V.I.S.-inspired passion project. The purpose of this project acts as a different way to showcase my personal portfolio, combining my interest in AI with futuristic technology. Please feel free to critique and give feedback, I hope you learn more about me!</p>
+        <p><em>PS: Try out talking to my AI and it will talk back to you!</em></p>
+        <p>Contacts: <a href="mailto:williamhoman22@gmail.com">williamhoman22@gmail.com</a></p>
       </div>
       <div class="entry">
-        <h3>Education</h3>
-        <p>Completing an Associate of Science in Computer Science at Georgia Highlands College (4.0 GPA), transferring to the University of Georgia to finish a BS in Computer Science.</p>
+        <h3>Links</h3>
+        <p>
+          <a href="https://github.com/WilliamHoman1" target="_blank" rel="noopener">GitHub</a>
+          &nbsp;·&nbsp;
+          <a href="https://www.linkedin.com/in/william-azevedo-homan-122a68398" target="_blank" rel="noopener">LinkedIn</a>
+        </p>
       </div>
     </div>
 
     <div class="tab-content" id="tab-resume">
       <div class="entry">
         <h3>William Homan</h3>
-        <p>AI/Automation Engineering Intern, Cox Enterprises (AA&A Team)</p>
-        <p>Associate of Science in Computer Science — Georgia Highlands College (4.0 GPA)<br>Transferring to University of Georgia — BS Computer Science</p>
-        <p><a href="/resume.pdf" download>⬇ Download PDF resume</a></p>
+        <p>AI/Automation Intern, Cox Enterprises — Atlanta, GA (May 2026 – Present)</p>
+        <p>B.S. Computer Science — University of Georgia (Expected Spring 2028)<br>A.S. Computer Science — Georgia Highlands College (4.0 GPA, Graduated Spring 2026)</p>
+        <p><a href="assets/resume.pdf" onclick="openResume();return false;">▤ View resume</a></p>
       </div>
       <div class="entry">
         <h3>Skills</h3>
-        <span class="tag">UiPath / RPA</span><span class="tag">Orchestrator</span>
-        <span class="tag">Python</span><span class="tag">C#</span>
-        <span class="tag">ROS 2</span><span class="tag">Unity</span>
-        <span class="tag">VBA</span><span class="tag">Git/GitHub</span>
+        <span class="tag">Python</span><span class="tag">PyCharm</span>
+        <span class="tag">GitLab</span><span class="tag">GitHub</span>
+        <span class="tag">UiPath Studio</span><span class="tag">UiPath Orchestrator</span>
+        <span class="tag">VS Code</span><span class="tag">Claude API</span>
+      </div>
+      <div class="entry">
+        <h3>Certifications</h3>
+        <p>Anthropic Generative AI Development · UiPath Automation Associate Training · UiPath Automation Explorer Training · Office 365</p>
       </div>
     </div>
 
     <div class="tab-content" id="tab-projects">
       <div class="entry">
-        <h3>Autonomous Drone Swarm Simulation</h3>
-        <p>Multi-agent drone swarm sim aimed at defense-tech applications. Python/ROS 2 (Humble) in Docker, visualized in Unity 6 (URP). Swarm coordinator, mission planner, swarm API.</p>
-        <span class="tag">Python</span><span class="tag">ROS 2</span><span class="tag">Unity</span><span class="tag">Docker</span>
+        <h3>Assignment Manager</h3>
+        <p>Used by GHC professors. Python, GitLab API, Claude API, backend + frontend (Textual), SQLite database. Built an assignment builder that works with GitLab, PyCharm, and Claude to send out problem set labs — automating a manual process for professors, saving time to invest into students. Includes a chat bot so professors can create assignments with a prompt.</p>
+        <span class="tag">Python</span><span class="tag">GitLab API</span><span class="tag">Claude API</span><span class="tag">SQLite</span><span class="tag">Textual</span>
       </div>
       <div class="entry">
-        <h3>Geotab Dispatcher Bot</h3>
-        <p>UiPath Dispatcher bot pulling DealShield/Manheim reports into Orchestrator queues.</p>
+        <h3>SafeHome Game</h3>
+        <p>Python text-based adventure game with multiple features, visuals, and timed decisions.</p>
+        <span class="tag">Python</span>
       </div>
       <div class="entry">
-        <h3>UiPath Insights Dashboard</h3>
-        <p>Looker-based dashboard built in UiPath Insights for a Fleet Services customer.</p>
-      </div>
-      <div class="entry">
-        <h3>Orchestrator Queue Audit</h3>
-        <p>Audit tooling tracking queue/folder/process associations across Orchestrator at scale.</p>
-      </div>
-      <div class="entry">
-        <h3>Excel Queue Report Macro</h3>
-        <p>VBA macro auto-formatting recurring Excel queue reports.</p>
+        <h3>WilliamAI (this site)</h3>
+        <p>A 3D particle AI hub with a Claude-powered chatbot — GPU-shader particle system (Three.js), voice input/output, and this portfolio.</p>
+        <span class="tag">Three.js</span><span class="tag">Claude API</span><span class="tag">Vercel</span>
       </div>
     </div>
 
     <div class="tab-content" id="tab-photos">
       <div class="photo-grid">
-        <div>photo 1</div><div>photo 2</div><div>photo 3</div>
-        <div>photo 4</div><div>photo 5</div><div>photo 6</div>
+        <img src="assets/photos/photo1.jpg" alt="" loading="lazy" onerror="this.style.display='none'">
+        <img src="assets/photos/photo2.jpg" alt="" loading="lazy" onerror="this.style.display='none'">
+        <img src="assets/photos/photo3.jpg" alt="" loading="lazy" onerror="this.style.display='none'">
+        <img src="assets/photos/photo4.jpg" alt="" loading="lazy" onerror="this.style.display='none'">
+        <img src="assets/photos/photo5.jpg" alt="" loading="lazy" onerror="this.style.display='none'">
+        <img src="assets/photos/photo6.jpg" alt="" loading="lazy" onerror="this.style.display='none'">
       </div>
-      <p style="margin-top:12px;color:var(--dim);font-size:12px;">Swap these placeholders for real &lt;img&gt; tags pointing at /assets.</p>
+      <p style="margin-top:12px;color:var(--dim);font-size:12px;">Drop image files named photo1.jpg – photo6.jpg into assets/photos/ to fill this grid.</p>
     </div>
 
     <div class="tab-content" id="tab-history">
       <div class="entry">
         <h3>Timeline</h3>
-        <p>Georgia Highlands College — Associate of Science in Computer Science, 4.0 GPA.</p>
-        <p>Cox Enterprises — AI/Automation Engineering Intern, AA&A Team.</p>
-        <p>Next — transferring to the University of Georgia for a BS in Computer Science.</p>
+        <p><strong>Harrison High School</strong> — Kennesaw, GA. Graduated May 2023. GPA 4.2, Baseball &amp; Hope Scholarship, National Honors Society, Student Athlete.</p>
+        <p><strong>Georgia Highlands College</strong> — Cartersville, GA. A.S. Computer Science, Graduated Spring 2026. GPA 4.0, Student Athlete: Baseball, President's List x4, NJCAA First Team All-Academic.</p>
+        <p><strong>Cox Enterprises</strong> — Atlanta, GA. AI/Automation Intern, May 2026 – Present. Selected as 1 of 144 interns from 20,000+ applicants company-wide.</p>
+        <p><strong>University of Georgia</strong> — Athens, GA. B.S. Computer Science, Expected Spring 2028.</p>
       </div>
     </div>
 
-    <div class="tab-content" id="tab-chat">
+      </div>
+    </div>
+
+    <div class="rail" id="railRight"></div>
+
+    <!-- Resume preview modal: opens the PDF in-page so visitors don't have to download it -->
+    <div class="panel-backdrop" id="resumeBackdrop" onclick="closeResume()"></div>
+    <div class="resume-modal" id="resumeModal">
+      <div class="panel-header"><span class="back" onclick="closeResume()">Close</span><span>Resume</span><span></span></div>
+      <iframe id="resumeFrame" title="William Homan Resume"></iframe>
+    </div>
+
+    <!-- Chat drawer: separate from the content panel above so the orb stays
+         visible and animating (idle / listening / speaking) the whole time
+         you're talking to it, instead of spinning away like the info tabs. -->
+    <div class="chat-drawer" id="chatDrawer">
+      <div class="panel-header"><span class="back" onclick="closeChat()">Core</span><span>AI Console</span><span></span></div>
       <div class="log" id="log">
         <div class="line sys">// Boot sequence complete. Ask me anything about William — background, skills, or projects.</div>
+      </div>
+      <div class="voice-row" id="voiceRow">
+        <label for="voiceSelect">Voice</label>
+        <select id="voiceSelect"></select>
       </div>
       <div class="input-row">
         <button id="micBtn" class="icon-btn" title="Speak your question" onclick="toggleListening()">MIC</button>
@@ -119,10 +147,6 @@
         <button id="voiceToggle" class="icon-btn" title="Toggle spoken replies" onclick="toggleVoiceOutput()">VOICE</button>
       </div>
     </div>
-      </div>
-    </div>
-
-    <div class="rail" id="railRight"></div>
   </div>
 
 <script src="js/ui.js"></script>
