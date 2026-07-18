@@ -8,6 +8,7 @@
 let reactorPulse = 1;          // set higher while "thinking"/speaking (drives the breathing pulse)
 let reactorListening = false;  // true while the mic is actively capturing speech (drives a cool tint)
 let partField = () => {};      // reassigned once the field boots; called on tab open/close
+let coreResize = () => {};     // reassigned once the core boots; called when the core stage becomes visible again
 
 // shared soft circular glow sprite — still used for the corona/ring sprites
 function makeGlowSprite(){
