@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>William AI</title>
+<meta property="og:title" content="William AI">
+<meta property="og:description" content="A 3D particle AI hub for William Homan — resume, projects, and an AI console.">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <canvas id="particleField"></canvas>
+
+  <div class="header">
+    <div class="brand">Homan Systems</div>
+    <h1>WILLIAM // AI</h1>
+  </div>
+  <div class="status-line" id="statusLine">SYSTEMS ONLINE — TAP THE CORE TO TALK</div>
+
+  <div class="stage">
+    <div class="rail" id="railLeft"></div>
+
+    <div class="center-slot">
+      <div class="core-stage" id="coreStage" onclick="openChat()">
+        <canvas id="coreParticles"></canvas>
+        <div class="tap-hint">tap to talk</div>
+      </div>
+
+      <!-- UNIFIED INFO PANEL WITH HORIZONTAL TABS -->
+      <div class="panel-backdrop" id="panelBackdrop" onclick="closePanel()"></div>
+      <div class="panel" id="infoPanel">
+    <div class="panel-header"><span class="back" onclick="closePanel()">Core</span><span id="panelTitle">Info</span><span></span></div>
+    <div class="tab-bar" id="tabBar">
+      <div class="tab-btn" data-tab="about">About</div>
+      <div class="tab-btn" data-tab="resume">Resume</div>
+      <div class="tab-btn" data-tab="projects">Projects</div>
+      <div class="tab-btn" data-tab="photos">Photos</div>
+      <div class="tab-btn" data-tab="history">History</div>
+      <div class="tab-btn" data-tab="chat">AI Chat</div>
+    </div>
+
+    <div class="tab-content" id="tab-about">
+      <div class="entry">
+        <h3>William Homan</h3>
+        <p>AI/Automation Engineering Intern at Cox Enterprises, on the AA&A Team — building and maintaining UiPath RPA workflows, Orchestrator integrations, and internal automation tooling.</p>
+      </div>
+      <div class="entry">
+        <h3>Education</h3>
+        <p>Completing an Associate of Science in Computer Science at Georgia Highlands College (4.0 GPA), transferring to the University of Georgia to finish a BS in Computer Science.</p>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-resume">
+      <div class="entry">
+        <h3>William Homan</h3>
+        <p>AI/Automation Engineering Intern, Cox Enterprises (AA&A Team)</p>
+        <p>Associate of Science in Computer Science — Georgia Highlands College (4.0 GPA)<br>Transferring to University of Georgia — BS Computer Science</p>
+        <p><a href="/resume.pdf" download>⬇ Download PDF resume</a></p>
+      </div>
+      <div class="entry">
+        <h3>Skills</h3>
+        <span class="tag">UiPath / RPA</span><span class="tag">Orchestrator</span>
+        <span class="tag">Python</span><span class="tag">C#</span>
+        <span class="tag">ROS 2</span><span class="tag">Unity</span>
+        <span class="tag">VBA</span><span class="tag">Git/GitHub</span>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-projects">
+      <div class="entry">
+        <h3>Autonomous Drone Swarm Simulation</h3>
+        <p>Multi-agent drone swarm sim aimed at defense-tech applications. Python/ROS 2 (Humble) in Docker, visualized in Unity 6 (URP). Swarm coordinator, mission planner, swarm API.</p>
+        <span class="tag">Python</span><span class="tag">ROS 2</span><span class="tag">Unity</span><span class="tag">Docker</span>
+      </div>
+      <div class="entry">
+        <h3>Geotab Dispatcher Bot</h3>
+        <p>UiPath Dispatcher bot pulling DealShield/Manheim reports into Orchestrator queues.</p>
+      </div>
+      <div class="entry">
+        <h3>UiPath Insights Dashboard</h3>
+        <p>Looker-based dashboard built in UiPath Insights for a Fleet Services customer.</p>
+      </div>
+      <div class="entry">
+        <h3>Orchestrator Queue Audit</h3>
+        <p>Audit tooling tracking queue/folder/process associations across Orchestrator at scale.</p>
+      </div>
+      <div class="entry">
+        <h3>Excel Queue Report Macro</h3>
+        <p>VBA macro auto-formatting recurring Excel queue reports.</p>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-photos">
+      <div class="photo-grid">
+        <div>photo 1</div><div>photo 2</div><div>photo 3</div>
+        <div>photo 4</div><div>photo 5</div><div>photo 6</div>
+      </div>
+      <p style="margin-top:12px;color:var(--dim);font-size:12px;">Swap these placeholders for real &lt;img&gt; tags pointing at /assets.</p>
+    </div>
+
+    <div class="tab-content" id="tab-history">
+      <div class="entry">
+        <h3>Timeline</h3>
+        <p>Georgia Highlands College — Associate of Science in Computer Science, 4.0 GPA.</p>
+        <p>Cox Enterprises — AI/Automation Engineering Intern, AA&A Team.</p>
+        <p>Next — transferring to the University of Georgia for a BS in Computer Science.</p>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-chat">
+      <div class="log" id="log">
+        <div class="line sys">// Boot sequence complete. Ask me anything about William — background, skills, or projects.</div>
+      </div>
+      <div class="input-row">
+        <button id="micBtn" class="icon-btn" title="Speak your question" onclick="toggleListening()">MIC</button>
+        <input type="text" id="input" placeholder="Type a question..." onkeydown="if(event.key==='Enter')send()">
+        <button onclick="send()">Send</button>
+        <button id="voiceToggle" class="icon-btn" title="Toggle spoken replies" onclick="toggleVoiceOutput()">VOICE</button>
+      </div>
+    </div>
+      </div>
+    </div>
+
+    <div class="rail" id="railRight"></div>
+  </div>
+
+<script src="js/ui.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/scene-shared.js"></script>
+<script src="js/particle-field.js"></script>
+<script src="js/particle-core.js"></script>
+</body>
+</html>
