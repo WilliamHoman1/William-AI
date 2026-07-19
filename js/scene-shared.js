@@ -10,6 +10,15 @@ let reactorListening = false;  // true while the mic is actively capturing speec
 let partField = () => {};      // reassigned once the field boots; called on tab open/close
 let coreResize = () => {};     // reassigned once the core boots; called when the core stage becomes visible again
 
+// live render stats, written by the two render loops each frame and read by
+// the diagnostics HUD in ui.js (updated on a slower interval there)
+const HUD_STATS = {
+  frameMs: 16.7,   // smoothed frame time (EMA), measured in the field loop
+  fieldCalls: 0,   // draw calls per frame, background field renderer
+  coreCalls: 0,    // draw calls per frame, core reactor renderer
+  points: 0,       // total particles across both scenes (filled in as systems boot)
+};
+
 // shared soft circular glow sprite — still used for the corona/ring sprites
 function makeGlowSprite(){
   const size = 128; // higher-res gradient — less banding/pixelation when the sprite is scaled up

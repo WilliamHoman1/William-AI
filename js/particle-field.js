@@ -183,16 +183,26 @@
     mat.uniforms.uPartTime.value = mat.uniforms.uTime.value;
   };
 
+  HUD_STATS.points += COUNT;
+
   const clock = new THREE.Clock();
   let linkFrame = 0;
+  let lastFrameAt = performance.now();
   function animate(){
     requestAnimationFrame(animate);
     const timeSec = clock.getElapsedTime();
     mat.uniforms.uTime.value = timeSec;
 
+    // smoothed frame time for the diagnostics HUD (this loop runs every frame
+    // whether or not the core is visible, so it's the canonical FPS source)
+    const now = performance.now();
+    HUD_STATS.frameMs += (Math.min(now - lastFrameAt, 100) - HUD_STATS.frameMs) * 0.08;
+    lastFrameAt = now;
+
     if(++linkFrame % 5 === 0) updateLinks(timeSec);
 
     renderer.render(scene, camera);
+    HUD_STATS.fieldCalls = renderer.info.render.calls;
     glowCtx.clearRect(0, 0, glowCanvas.width, glowCanvas.height);
     glowCtx.drawImage(canvas, 0, 0, glowCanvas.width, glowCanvas.height);
   }

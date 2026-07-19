@@ -499,8 +499,10 @@
     reactor.rotation.x = -curPtr.y * 0.3;
 
     renderer.render(scene, camera);
+    HUD_STATS.coreCalls = renderer.info.render.calls;
     glowCtx.clearRect(0, 0, glowCanvas.width, glowCanvas.height);
     glowCtx.drawImage(canvas, 0, 0, glowCanvas.width, glowCanvas.height);
   }
+  HUD_STATS.points += CORE_COUNT + FLARE_COUNT + ringConfigs.reduce((s,c) => s + c.count, 0);
   animate();
 })();

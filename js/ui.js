@@ -32,6 +32,35 @@
   setTimeout(window.skipBoot, lines.length * 480 + 900);
 })();
 
+// ---------- Status ticker: rotates through HUD readouts while idle, so the
+// interface feels alive even before the visitor touches anything. Any module
+// (panel/chat) can take the line over with setStatus(); releaseStatus()
+// resumes the rotation. ----------
+const IDLE_STATUS_LINES = [
+  'SYSTEMS ONLINE — TAP THE CORE TO TALK',
+  'NEURAL LINK STABLE — 20,000+ GPU PARTICLES ACTIVE',
+  'VOICE INTERFACE READY — ASK ME ANYTHING',
+  'CLAUDE UPLINK NOMINAL — RESPONSES STREAM LIVE',
+];
+const statusLineEl = document.getElementById('statusLine');
+let statusIdle = true;
+let statusIdx = 0;
+
+function setStatus(text){
+  statusIdle = false;
+  statusLineEl.textContent = text;
+}
+function releaseStatus(){
+  statusIdle = true;
+  statusIdx = 0;
+  statusLineEl.textContent = IDLE_STATUS_LINES[0];
+}
+setInterval(() => {
+  if(!statusIdle) return;
+  statusIdx = (statusIdx + 1) % IDLE_STATUS_LINES.length;
+  statusLineEl.textContent = IDLE_STATUS_LINES[statusIdx];
+}, 4500);
+
 // ---------- Side rail bars (metallic, no icons/lines) ----------
 // all content topics live on the left rail now; the right side is reserved
 // for the chat drawer, which the orb opens directly (see openChat/closeChat below).
@@ -43,16 +72,73 @@ const leftTopics = [
   {id:'history',  label:'History'},
 ];
 
-function buildRail(container, topics){
-  topics.forEach(t => {
-    const bar = document.createElement('div');
-    bar.className = 'bar';
-    bar.onclick = (e) => { e.stopPropagation(); selectPanel(t.id); };
-    bar.innerHTML = `<div class="tick"></div><div class="bar-label">${t.label}</div>`;
-    container.appendChild(bar);
-  });
+function makeBar(container, label, onActivate){
+  const bar = document.createElement('button');
+  bar.className = 'bar';
+  bar.setAttribute('aria-label', 'Open ' + label);
+  bar.onclick = (e) => { e.stopPropagation(); onActivate(); };
+  bar.innerHTML = `<div class="tick"></div><div class="bar-label">${label}</div>`;
+  container.appendChild(bar);
 }
-buildRail(document.getElementById('railLeft'), leftTopics);
+const railLeftEl = document.getElementById('railLeft');
+leftTopics.forEach(t => makeBar(railLeftEl, t.label, () => selectPanel(t.id)));
+// two non-panel bars: the annotated systems view and the diagnostics HUD
+makeBar(railLeftEl, 'Systems', () => toggleAnnotations());
+makeBar(railLeftEl, 'Diag', () => toggleHud());
+
+// ---------- Systems view: in-place annotations explaining the rendering ----------
+const annotateLayer = document.getElementById('annotateLayer');
+let annotationsOn = false;
+
+function toggleAnnotations(force){
+  annotationsOn = force !== undefined ? force : !annotationsOn;
+  annotateLayer.hidden = !annotationsOn;
+  if(annotationsOn) setStatus('SYSTEMS VIEW — HOW THE RENDERING WORKS');
+  else releaseStatus();
+}
+
+// ---------- Diagnostics HUD: live render stats, updated on a slow interval ----------
+const hudPanel = document.getElementById('hudPanel');
+let hudOn = false;
+const sessionStart = performance.now();
+
+function toggleHud(force){
+  hudOn = force !== undefined ? force : !hudOn;
+  hudPanel.hidden = !hudOn;
+}
+
+setInterval(() => {
+  if(!hudOn) return;
+  const fps = 1000 / HUD_STATS.frameMs;
+  document.getElementById('hudFps').textContent = fps.toFixed(0);
+  document.getElementById('hudFrame').textContent = HUD_STATS.frameMs.toFixed(1) + ' ms';
+  document.getElementById('hudCalls').textContent = (HUD_STATS.fieldCalls + HUD_STATS.coreCalls) + ' /frame';
+  document.getElementById('hudPoints').textContent = HUD_STATS.points.toLocaleString();
+  document.getElementById('hudDpr').textContent = Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO) + 'x';
+  document.getElementById('hudRes').textContent = window.innerWidth + '×' + window.innerHeight;
+  const up = Math.floor((performance.now() - sessionStart) / 1000);
+  document.getElementById('hudUptime').textContent =
+    String(Math.floor(up / 60)).padStart(2, '0') + ':' + String(up % 60).padStart(2, '0');
+  document.getElementById('hudConvos').textContent = localStorage.getItem('wmConvoCount') || '0';
+}, 500);
+
+// ---------- Global keyboard controls: ` toggles the HUD, Escape closes the
+// topmost open layer (lightbox → resume → panel → chat → overlays) ----------
+window.addEventListener('keydown', (e) => {
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
+  if((e.key === '`' || e.key === '~') && !typing){
+    e.preventDefault();
+    toggleHud();
+    return;
+  }
+  if(e.key !== 'Escape') return;
+  if(lightbox.classList.contains('open')) closeLightbox();
+  else if(resumeModal.classList.contains('open')) closeResume();
+  else if(infoPanel.classList.contains('open')) closePanel();
+  else if(chatOpen) closeChat();
+  else if(annotationsOn) toggleAnnotations(false);
+  else if(hudOn) toggleHud(false);
+});
 
 const coreStage = document.getElementById('coreStage');
 const infoPanel = document.getElementById('infoPanel');
@@ -75,8 +161,16 @@ function setActiveTab(id){
 
 const panelBackdrop = document.getElementById('panelBackdrop');
 
+// keyboard activation for role="button" elements (core stage, header actions)
+document.querySelectorAll('[role="button"][tabindex]').forEach(el => {
+  el.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); el.click(); }
+  });
+});
+
 function selectPanel(id){
-  document.getElementById('statusLine').textContent = id.toUpperCase() + ' MODULE ACTIVE';
+  toggleAnnotations(false); // the core (and its annotations) spin away with the panel open
+  setStatus(id.toUpperCase() + ' MODULE ACTIVE');
   setActiveTab(id);
   coreStage.classList.add('spin-out');
   partField();
@@ -91,7 +185,7 @@ function closePanel(){
   panelBackdrop.classList.remove('open');
   coreStage.classList.remove('hidden');
   coreStage.classList.remove('spin-out');
-  document.getElementById('statusLine').textContent = 'SYSTEMS ONLINE — TAP THE CORE TO TALK';
+  releaseStatus();
   partField();
   // the core's WebGL canvas can get resized to 0 while its container was
   // display:none (e.g. a video's fullscreen toggle firing a window resize
@@ -111,7 +205,7 @@ function openChat(){
   chatDrawer.classList.add('open');
   coreStage.classList.add('chat-active');
   document.querySelectorAll('.rail').forEach(r => r.classList.add('chat-hidden'));
-  document.getElementById('statusLine').textContent = 'AI CONSOLE ACTIVE';
+  setStatus('AI CONSOLE ACTIVE');
   partField();
 }
 
@@ -120,7 +214,7 @@ function closeChat(){
   chatDrawer.classList.remove('open');
   coreStage.classList.remove('chat-active');
   document.querySelectorAll('.rail').forEach(r => r.classList.remove('chat-hidden'));
-  document.getElementById('statusLine').textContent = 'SYSTEMS ONLINE — TAP THE CORE TO TALK';
+  releaseStatus();
   partField();
 }
 
@@ -177,39 +271,84 @@ function appendLine(role, text){
   log.scrollTop = log.scrollHeight;
 }
 
-// ---------- Agent navigation: "go to williams projects", "open his github", etc. ----------
-const NAV_KEYWORDS = {
-  about:    ['about'],
-  resume:   ['resume','cv'],
-  projects: ['project'],
-  photos:   ['photo','picture'],
-  history:  ['history','timeline'],
-};
-const NAV_PHRASE = /\b(go to|open|show|take me to|navigate to|pull up|bring up)\b/;
-
-function handleNavigation(text){
-  const t = text.toLowerCase();
-  if(!NAV_PHRASE.test(t)) return false;
-
-  if(t.includes('github')){
+// ---------- Agentic navigation: Claude decides to drive the UI via real tool
+// calls (defined in api/chat.js). The backend streams a @@TOOL:{...}@@ marker
+// inline with the text whenever the model invokes one; extractStreamText()
+// below strips the markers out of the visible reply and executes them. ----------
+function executeToolCall(call){
+  if(call.name === 'open_github'){
     appendLine('sys', '// Opening GitHub — github.com/WilliamHoman1');
     window.open('https://github.com/WilliamHoman1', '_blank', 'noopener');
-    return true;
+    return;
   }
-
-  for(const [id, keywords] of Object.entries(NAV_KEYWORDS)){
-    if(keywords.some(k => t.includes(k))){
-      appendLine('sys', '// Navigating to ' + tabTitles[id] + '...');
-      if(infoPanel.classList.contains('open')){
-        setActiveTab(id);
-        document.getElementById('statusLine').textContent = id.toUpperCase() + ' MODULE ACTIVE';
-      } else {
-        selectPanel(id);
-      }
-      return true;
+  if(call.name === 'open_section' && call.input && tabTitles[call.input.section]){
+    const id = call.input.section;
+    appendLine('sys', '// Navigating to ' + tabTitles[id] + '...');
+    if(infoPanel.classList.contains('open')){
+      setActiveTab(id);
+      setStatus(id.toUpperCase() + ' MODULE ACTIVE');
+    } else {
+      selectPanel(id);
     }
   }
-  return false;
+}
+
+// strips complete @@TOOL:{...}@@ markers from the streamed text (executing
+// each exactly once, tracked by its position) and hides any partially
+// arrived marker at the tail until its closing @@ shows up.
+function extractStreamText(raw, executedAt){
+  const re = /@@TOOL:(\{.*?\})@@/g;
+  let out = '', last = 0, m;
+  while((m = re.exec(raw))){
+    out += raw.slice(last, m.index);
+    last = m.index + m[0].length;
+    if(!executedAt.has(m.index)){
+      executedAt.add(m.index);
+      try{ executeToolCall(JSON.parse(m[1])); }catch(e){ /* malformed marker — skip */ }
+    }
+  }
+  let rest = raw.slice(last);
+  const partial = rest.lastIndexOf('@@TOOL:');
+  if(partial >= 0) rest = rest.slice(0, partial);
+  return out + rest;
+}
+
+// index just past the last complete sentence in `text`, so speech can start
+// on finished sentences while the rest of the reply is still streaming in
+function sentenceBoundary(text){
+  const re = /[.!?…]["')\]]*\s/g;
+  let end = 0, m;
+  while((m = re.exec(text))) end = m.index + m[0].length;
+  return end;
+}
+
+// ---------- Conversation persistence: the chat survives page reloads and
+// return visits (localStorage), so the AI "remembers" you ----------
+const HISTORY_KEY = 'wmHistory';
+const CONVO_COUNT_KEY = 'wmConvoCount';
+
+function saveHistory(){
+  try{ localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(-40))); }catch(e){}
+}
+
+function clearConversation(){
+  history.length = 0;
+  try{ localStorage.removeItem(HISTORY_KEY); }catch(e){}
+  log.innerHTML = '';
+  appendLine('sys', '// Memory wiped. Ask me anything about William — background, skills, or projects.');
+  if(chipRow) chipRow.classList.remove('hidden');
+}
+
+function emailTranscript(){
+  if(!history.length){ appendLine('sys', '// Nothing to send yet — ask me something first.'); return; }
+  const transcript = history
+    .map(m => (m.role === 'user' ? 'Visitor: ' : 'WilliamAI: ') + stripMarkdown(m.content))
+    .join('\n\n');
+  const subject = encodeURIComponent('Conversation with WilliamAI');
+  const body = encodeURIComponent(
+    'Hi William,\n\nI just talked to your AI — here\'s our conversation:\n\n' + transcript + '\n\n'
+  );
+  window.location.href = 'mailto:williamhoman22@gmail.com?subject=' + subject + '&body=' + body;
 }
 
 async function send(){
@@ -219,11 +358,11 @@ async function send(){
   const text = input.value.trim();
   if(!text) return;
   input.value = '';
+  hideChips();
   appendLine('you', text);
 
-  if(handleNavigation(text)) return;
-
   history.push({role:'user', content:text});
+  try{ localStorage.setItem(CONVO_COUNT_KEY, String((+localStorage.getItem(CONVO_COUNT_KEY) || 0) + 1)); }catch(e){}
 
   reactorPulse = 3.5;
   const typingEl = document.createElement('div');
@@ -238,23 +377,74 @@ async function send(){
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ messages: history })
     });
-    const data = await res.json();
-    typingEl.remove();
     if(!res.ok){
+      const data = await res.json().catch(() => ({}));
+      typingEl.remove();
       appendLine('sys', '// Backend error: ' + (data.error || res.status) + '. Check ANTHROPIC_API_KEY is set in your deployment.');
       return;
     }
-    const rawReply = data.reply || "No response received.";
-    const reply = stripMarkdown(rawReply);
-    appendLine('ai', reply);
-    history.push({role:'assistant', content:rawReply});
-    speak(reply);
+
+    // the backend streams the reply as plain-text chunks — render each chunk
+    // into the same line as it arrives, so the AI visibly "types" its answer
+    typingEl.remove();
+    const aiEl = document.createElement('div');
+    aiEl.className = 'line ai';
+    log.appendChild(aiEl);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    const executedTools = new Set();
+    let rawReply = '';
+    let spokenUpTo = 0;
+    while(true){
+      const { done, value } = await reader.read();
+      if(done) break;
+      rawReply += decoder.decode(value, { stream:true });
+      const visible = stripMarkdown(extractStreamText(rawReply, executedTools));
+      aiEl.textContent = visible;
+      log.scrollTop = log.scrollHeight;
+      // speak each sentence as soon as it completes, while the rest streams
+      const boundary = sentenceBoundary(visible);
+      if(boundary > spokenUpTo){
+        enqueueSpeech(visible.slice(spokenUpTo, boundary));
+        spokenUpTo = boundary;
+      }
+    }
+    rawReply += decoder.decode();
+
+    const visibleFinal = stripMarkdown(extractStreamText(rawReply, executedTools));
+    if(!visibleFinal && executedTools.size){
+      // pure tool call, no text — the "// Navigating to..." sys line already
+      // told the visitor what happened, so drop the empty reply bubble
+      aiEl.remove();
+      history.push({role:'assistant', content: '(opened the requested section)'});
+    } else {
+      const cleanReply = visibleFinal || 'No response received.';
+      aiEl.textContent = cleanReply;
+      log.scrollTop = log.scrollHeight;
+      if(cleanReply.length > spokenUpTo) enqueueSpeech(cleanReply.slice(spokenUpTo));
+      history.push({role:'assistant', content: cleanReply});
+    }
+    saveHistory();
   }catch(err){
     typingEl.remove();
     appendLine('sys', '// Connection to backend failed. Is /api/chat deployed?');
   }finally{
     reactorPulse = 1;
   }
+}
+
+// ---------- Suggested question chips: one-tap starter prompts so first-time
+// visitors (recruiters especially) don't face an empty input box ----------
+const chipRow = document.getElementById('chipRow');
+
+function askChip(text){
+  document.getElementById('input').value = text;
+  send();
+}
+
+function hideChips(){
+  if(chipRow) chipRow.classList.add('hidden');
 }
 
 // ---------- Voice: speech-to-text input + text-to-speech replies ----------
@@ -462,8 +652,12 @@ function primeAudio(){
   if(!voiceOutputEnabled) return;
   ensureSpeakGraph();
   if(speakAudioCtx && speakAudioCtx.state === 'suspended') speakAudioCtx.resume();
-  currentAudio.play().catch(() => {});
-  currentAudio.pause();
+  // skip the play()+pause() unlock if a sentence is mid-playback — pausing it
+  // would strand the speech queue waiting on an `ended` that never fires
+  if(currentAudio.paused){
+    currentAudio.play().catch(() => {});
+    currentAudio.pause();
+  }
 }
 
 function pumpSpeakLevel(){
@@ -489,20 +683,89 @@ function toggleVoiceOutput(){
   voiceToggleBtn.classList.toggle('muted', !voiceOutputEnabled);
   voiceToggleBtn.textContent = voiceOutputEnabled ? 'VOICE' : 'MUTED';
   if(!voiceOutputEnabled){
+    speechQueue.length = 0;
     window.speechSynthesis.cancel();
     currentAudio.pause();
     stopSpeakAnalysis();
   }
 }
 
-// Primary voice: a specific chosen ElevenLabs voice, generated server-side via
-// /api/tts (keeps the API key off the client). Falls back to the browser's
-// built-in speechSynthesis voice if ElevenLabs isn't configured, fails, or
-// the monthly quota has run out — so this degrades gracefully rather than
-// going silent.
+// ---------- Streaming speech queue ----------
+// Replies are spoken sentence-by-sentence as they stream in from Claude
+// (send() enqueues each completed sentence), instead of waiting for the whole
+// reply before any audio starts. Sentences play strictly in order through the
+// single shared <audio> element. Primary voice is ElevenLabs via /api/tts
+// (key stays server-side); on the first failure the whole session falls back
+// to the browser's built-in speechSynthesis, which does its own queueing.
+const speechQueue = [];
+let speechActive = false;
+let ttsAvailable = true;
+
+function enqueueSpeech(text){
+  if(!voiceOutputEnabled) return;
+  const trimmed = text.trim();
+  if(!trimmed) return;
+  speechQueue.push(trimmed);
+  pumpSpeechQueue();
+}
+
+async function pumpSpeechQueue(){
+  if(speechActive) return;
+  speechActive = true;
+  while(speechQueue.length){
+    const text = speechQueue.shift();
+    if(!voiceOutputEnabled) continue;
+    if(ttsAvailable){
+      try{
+        await playTTS(text);
+        continue;
+      }catch(err){
+        ttsAvailable = false; // not configured / quota gone — browser voice for the rest of the session
+      }
+    }
+    speakBrowser(text);
+  }
+  speechActive = false;
+}
+
+// fetches one sentence of ElevenLabs audio and resolves when playback ends,
+// so the queue stays strictly ordered
+function playTTS(text){
+  return new Promise(async (resolve, reject) => {
+    try{
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ text }),
+      });
+      if(!res.ok) throw new Error('tts unavailable');
+
+      const blob = await res.blob();
+      if(!voiceOutputEnabled){ resolve(); return; } // muted while fetching
+      const url = URL.createObjectURL(blob);
+      stopSpeakAnalysis();
+
+      // route playback through an AnalyserNode so the orb pulses with the
+      // real amplitude of the voice, syllable to syllable — falls back to a
+      // flat pulse if the browser blocks the audio graph for any reason.
+      const analysisReady = ensureSpeakGraph();
+
+      currentAudio.src = url;
+      currentAudio.onplay = () => { if(analysisReady) pumpSpeakLevel(); else reactorPulse = 2.4; };
+      currentAudio.onended = () => { stopSpeakAnalysis(); URL.revokeObjectURL(url); resolve(); };
+      currentAudio.onerror = () => { stopSpeakAnalysis(); URL.revokeObjectURL(url); resolve(); };
+      currentAudio.onpause = () => { if(!voiceOutputEnabled){ URL.revokeObjectURL(url); resolve(); } };
+      await currentAudio.play();
+    }catch(err){
+      reject(err);
+    }
+  });
+}
+
+// browser speechSynthesis fallback — it maintains its own utterance queue, so
+// enqueued sentences still play in order without any extra bookkeeping
 function speakBrowser(text){
   if(!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   if(selectedVoice) utter.voice = selectedVoice;
   utter.rate = 1.02;
@@ -519,37 +782,14 @@ function speakBrowser(text){
   window.speechSynthesis.speak(utter);
 }
 
-async function speak(text){
-  if(!voiceOutputEnabled) return;
-
+// ---------- Restore a previous conversation (memory across visits) ----------
+(function restoreHistory(){
   try{
-    const res = await fetch('/api/tts', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ text }),
-    });
-    if(!res.ok) throw new Error('tts unavailable');
-
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const prevUrl = currentAudio.dataset.blobUrl;
-    currentAudio.pause();
-    stopSpeakAnalysis();
-
-    // route playback through an AnalyserNode so the orb pulses with the
-    // real amplitude of the voice, syllable to syllable — falls back to a
-    // flat pulse if the browser blocks the audio graph for any reason.
-    const analysisReady = ensureSpeakGraph();
-
-    currentAudio.src = url;
-    currentAudio.dataset.blobUrl = url;
-    currentAudio.onplay = () => { if(analysisReady) pumpSpeakLevel(); else reactorPulse = 2.4; };
-    currentAudio.onended = () => { stopSpeakAnalysis(); URL.revokeObjectURL(url); };
-    currentAudio.onerror = () => { stopSpeakAnalysis(); URL.revokeObjectURL(url); };
-    if(prevUrl) URL.revokeObjectURL(prevUrl);
-    if(!voiceOutputEnabled) return; // muted while we were fetching
-    await currentAudio.play();
-  }catch(err){
-    speakBrowser(text); // ElevenLabs not configured / request failed / quota used up
-  }
-}
+    const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    if(!Array.isArray(saved) || !saved.length) return;
+    saved.forEach(m => appendLine(m.role === 'user' ? 'you' : 'ai', stripMarkdown(String(m.content))));
+    appendLine('sys', '// Previous session restored — I remember our conversation. "Clear" wipes my memory.');
+    history.push(...saved);
+    hideChips();
+  }catch(e){ /* corrupted storage — start fresh */ }
+})();
