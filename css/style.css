@@ -398,6 +398,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .line.ai{color:var(--blue);text-shadow:0 0 6px rgba(90,215,255,0.4);}
 .line.ai::before{content:"WM-AI› "; color:var(--purple);}
 .line.sys{color:var(--dim);font-style:italic;font-size:12px;}
+.line.sys a{ color:var(--blue);font-style:normal;text-decoration:underline; }
+.line.sys a:hover{ color:var(--white); }
 /* suggested question chips — one-tap starter prompts above the input */
 .chip-row{
   display:flex;flex-wrap:wrap;gap:6px;

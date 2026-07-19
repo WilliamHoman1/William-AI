@@ -269,6 +269,23 @@ function appendLine(role, text){
   el.textContent = text;
   log.appendChild(el);
   log.scrollTop = log.scrollHeight;
+  return el;
+}
+
+// same as appendLine, but the text becomes a real clickable link — used
+// whenever a tool call wants to open a new tab (see executeToolCall below):
+// window.open() called from deep inside an async stream is well past the
+// original click's "user activation" window, so browsers silently swallow
+// it as a blocked popup. A real <a> the visitor can click always works.
+function appendLinkLine(role, text, url){
+  const el = appendLine(role, '');
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  a.textContent = text;
+  el.appendChild(a);
+  return el;
 }
 
 // ---------- Agentic navigation: Claude decides to drive the UI via real tool
@@ -277,13 +294,25 @@ function appendLine(role, text){
 // below strips the markers out of the visible reply and executes them. ----------
 function executeToolCall(call){
   if(call.name === 'open_github'){
-    appendLine('sys', '// Opening GitHub — github.com/WilliamHoman1');
-    window.open('https://github.com/WilliamHoman1', '_blank', 'noopener');
+    const url = 'https://github.com/WilliamHoman1';
+    // best-effort direct open — succeeds in browsers lenient about gesture
+    // timing, silently no-ops in strict ones (Safari, popup-blocked Chrome)
+    const win = window.open(url, '_blank', 'noopener');
+    if(win){
+      appendLine('sys', '// Opening GitHub — github.com/WilliamHoman1');
+    } else {
+      appendLinkLine('sys', '// Tap to open GitHub — github.com/WilliamHoman1', url);
+    }
     return;
   }
   if(call.name === 'open_section' && call.input && tabTitles[call.input.section]){
     const id = call.input.section;
     appendLine('sys', '// Navigating to ' + tabTitles[id] + '...');
+    // the chat drawer and info panel share the same z-index/overlap region on
+    // narrow viewports — leaving the drawer open put an opaque, click-eating
+    // layer on top of the panel the AI just navigated to, so photos/resume
+    // links inside it silently ate every tap.
+    if(chatOpen) closeChat();
     if(infoPanel.classList.contains('open')){
       setActiveTab(id);
       setStatus(id.toUpperCase() + ' MODULE ACTIVE');
