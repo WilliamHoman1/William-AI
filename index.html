@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>William AI</title>
-<meta name="description" content="A 3D particle AI hub for William Homan — resume, projects, and an AI console.">
-<meta property="og:title" content="William AI">
-<meta property="og:description" content="A 3D particle AI hub for William Homan — resume, projects, and an AI console.">
+<title>William Homan — WilliamAI · Interactive AI Portfolio</title>
+<meta name="description" content="William Homan's interactive AI portfolio — a JARVIS-style 3D particle interface with a voice-enabled Claude AI assistant. Explore his resume, projects, and talk to his AI.">
+<meta name="author" content="William Homan">
+<meta property="og:title" content="William Homan — Interactive AI Portfolio">
+<meta property="og:description" content="Not your average portfolio: a JARVIS-style 3D particle interface with a voice-enabled AI assistant that answers questions about William. Tap the core and talk to it.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://william-ai-lyart.vercel.app">
 <meta property="og:image" content="https://william-ai-lyart.vercel.app/assets/og-image.png">
@@ -16,9 +17,29 @@
 <meta property="og:image:alt" content="WilliamAI — a glowing 3D particle AI core">
 <meta property="og:site_name" content="William AI">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="William AI">
-<meta name="twitter:description" content="A 3D particle AI hub for William Homan — resume, projects, and an AI console.">
+<meta name="twitter:title" content="William Homan — Interactive AI Portfolio">
+<meta name="twitter:description" content="A JARVIS-style 3D particle interface with a voice-enabled AI assistant that answers questions about William. Tap the core and talk to it.">
 <meta name="twitter:image" content="https://william-ai-lyart.vercel.app/assets/og-image.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "William Homan",
+  "url": "https://william-ai-lyart.vercel.app",
+  "email": "mailto:williamhoman22@gmail.com",
+  "jobTitle": "AI/Automation Intern",
+  "worksFor": { "@type": "Organization", "name": "Cox Enterprises" },
+  "alumniOf": [
+    { "@type": "CollegeOrUniversity", "name": "Georgia Highlands College" },
+    { "@type": "CollegeOrUniversity", "name": "University of Georgia" }
+  ],
+  "knowsAbout": ["Artificial Intelligence", "Python", "JavaScript", "Three.js", "RPA", "UiPath", "Claude API"],
+  "sameAs": [
+    "https://github.com/WilliamHoman1",
+    "https://www.linkedin.com/in/william-azevedo-homan-122a68398"
+  ]
+}
+</script>
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -29,8 +50,22 @@
     <div class="boot-hint">tap to skip</div>
   </div>
 
-  <canvas id="particleField"></canvas>
-  <canvas id="particleFieldGlow"></canvas>
+  <canvas id="particleField" aria-hidden="true"></canvas>
+  <canvas id="particleFieldGlow" aria-hidden="true"></canvas>
+
+  <!-- Diagnostics HUD: live render stats overlay, toggled with ` or the DIAG rail button -->
+  <div class="hud-panel" id="hudPanel" hidden>
+    <div class="hud-title">// DIAGNOSTICS</div>
+    <div class="hud-row"><span>FPS</span><span id="hudFps">—</span></div>
+    <div class="hud-row"><span>FRAME TIME</span><span id="hudFrame">—</span></div>
+    <div class="hud-row"><span>DRAW CALLS</span><span id="hudCalls">—</span></div>
+    <div class="hud-row"><span>GPU PARTICLES</span><span id="hudPoints">—</span></div>
+    <div class="hud-row"><span>PIXEL RATIO</span><span id="hudDpr">—</span></div>
+    <div class="hud-row"><span>RESOLUTION</span><span id="hudRes">—</span></div>
+    <div class="hud-row"><span>SESSION UPTIME</span><span id="hudUptime">—</span></div>
+    <div class="hud-row"><span>CONVOS (THIS DEVICE)</span><span id="hudConvos">—</span></div>
+    <div class="hud-note">all particle motion computed in vertex shaders — CPU stays idle</div>
+  </div>
 
   <div class="header">
     <div class="brand">Homan Systems</div>
@@ -38,26 +73,37 @@
   </div>
   <div class="status-line" id="statusLine">SYSTEMS ONLINE — TAP THE CORE TO TALK</div>
 
-  <div class="stage">
+  <main class="stage">
     <div class="rail" id="railLeft"></div>
 
     <div class="center-slot">
-      <div class="core-stage" id="coreStage" onclick="openChat()">
-        <canvas id="coreParticles"></canvas>
-        <canvas id="coreParticlesGlow"></canvas>
+      <div class="core-stage" id="coreStage" onclick="openChat()" role="button" tabindex="0" aria-label="Tap to talk — opens the AI console">
+        <canvas id="coreParticles" aria-hidden="true"></canvas>
+        <canvas id="coreParticlesGlow" aria-hidden="true"></canvas>
         <div class="tap-hint">tap to talk</div>
+      </div>
+
+      <!-- Systems view: in-place annotations explaining how each rendering
+           technique works, toggled by the SYSTEMS rail button -->
+      <div class="annotate-layer" id="annotateLayer" hidden aria-hidden="true">
+        <div class="callout" style="top:8%;left:2%;"><b>NEBULA FIELD</b>13,000 clustered particles + cosmic-web filaments, wrapped endlessly on the GPU</div>
+        <div class="callout" style="top:34%;left:0;"><b>CORE SPHERE</b>5,200 particles — position is a pure function of time + hashed seeds in the vertex shader; zero CPU work per frame</div>
+        <div class="callout" style="bottom:18%;left:3%;"><b>HALO RINGS</b>3,790 particles on four tilted pivots, JARVIS-reactor style</div>
+        <div class="callout co-right" style="top:12%;right:2%;"><b>SOLAR FLARES</b>1,200 GPU-looped jets — lifetime, direction and arc all derived from a hash of time, no per-particle state</div>
+        <div class="callout co-right" style="top:44%;right:0;"><b>PLASMA ARCS</b>jagged bolts baked once on the CPU; the shader adds live wiggle + per-bolt flicker. Two "seeker" bolts re-aim at your cursor every frame</div>
+        <div class="callout co-right" style="bottom:12%;right:3%;"><b>BLOOM</b>no postprocessing pipeline — each WebGL canvas is mirrored to a low-res 2D canvas, blurred + screen-blended in CSS</div>
       </div>
 
       <!-- UNIFIED INFO PANEL WITH HORIZONTAL TABS -->
       <div class="panel-backdrop" id="panelBackdrop" onclick="closePanel()"></div>
       <div class="panel" id="infoPanel">
     <div class="panel-header"><span class="back" onclick="closePanel()">Core</span><span id="panelTitle">Info</span><span></span></div>
-    <div class="tab-bar" id="tabBar">
-      <div class="tab-btn" data-tab="about">About</div>
-      <div class="tab-btn" data-tab="resume">Resume</div>
-      <div class="tab-btn" data-tab="projects">Projects</div>
-      <div class="tab-btn" data-tab="photos">Photos</div>
-      <div class="tab-btn" data-tab="history">History</div>
+    <div class="tab-bar" id="tabBar" role="tablist">
+      <button class="tab-btn" data-tab="about" role="tab">About</button>
+      <button class="tab-btn" data-tab="resume" role="tab">Resume</button>
+      <button class="tab-btn" data-tab="projects" role="tab">Projects</button>
+      <button class="tab-btn" data-tab="photos" role="tab">Photos</button>
+      <button class="tab-btn" data-tab="history" role="tab">History</button>
     </div>
 
     <div class="tab-content" id="tab-about">
@@ -75,7 +121,7 @@
           <a href="https://www.linkedin.com/in/william-azevedo-homan-122a68398" target="_blank" rel="noopener">LinkedIn</a>
         </p>
       </div>
-      <p style="color:var(--dim);font-size:11px;letter-spacing:1px;">System build v1.0 — last updated July 2026</p>
+      <p style="color:var(--dim);font-size:11px;letter-spacing:1px;">System build v1.1 — last updated July 2026</p>
       <p style="color:var(--dim);font-size:11px;letter-spacing:1px;">© 2026 William Homan. All rights reserved.</p>
     </div>
 
@@ -153,7 +199,7 @@
       <div class="photo-grid">
         <figure>
           <img src="assets/photos/cox-headshot.jpg" alt="Cox Enterprises Headshot 2026" loading="lazy" onclick="openLightbox(this.src, this.alt)" onerror="this.closest('figure').style.display='none'">
-          <figcaption>Cox Enterprises HeadShot 2026</figcaption>
+          <figcaption>Cox Enterprises headshot, 2026</figcaption>
         </figure>
         <figure>
           <img src="assets/photos/cox-world-cup.jpg" alt="Cox World Cup event" loading="lazy" onclick="openLightbox(this.src, this.alt)" onerror="this.closest('figure').style.display='none'">
@@ -217,27 +263,40 @@
     <!-- Chat drawer: separate from the content panel above so the orb stays
          visible and animating (idle / listening / speaking) the whole time
          you're talking to it, instead of spinning away like the info tabs. -->
-    <div class="chat-drawer" id="chatDrawer">
-      <div class="panel-header"><span class="back" onclick="closeChat()">Core</span><span>AI Console</span><span></span></div>
-      <div class="log" id="log">
-        <div class="line sys">// Boot sequence complete. Ask me anything about William — background, skills, or projects.</div>
+    <div class="chat-drawer" id="chatDrawer" role="dialog" aria-label="AI console chat">
+      <div class="panel-header">
+        <span class="back" onclick="closeChat()">Core</span>
+        <span>AI Console</span>
+        <span class="header-actions">
+          <span class="header-action" onclick="clearConversation()" role="button" tabindex="0" title="Clear the conversation and its saved memory">Clear</span>
+          <span class="header-action" onclick="emailTranscript()" role="button" tabindex="0" title="Email this conversation to William">Email</span>
+        </span>
+      </div>
+      <div class="log" id="log" role="log" aria-live="polite">
+        <div class="line sys">// Boot sequence complete. Ask me anything about William — background, skills, or projects. Replies stream in live, and I can talk back.</div>
+      </div>
+      <div class="chip-row" id="chipRow">
+        <button class="chip" onclick="askChip('Why should a company hire William?')">Why hire William?</button>
+        <button class="chip" onclick="askChip('What has William built?')">What has he built?</button>
+        <button class="chip" onclick="askChip('Tell me about his internship at Cox Enterprises')">Cox internship</button>
+        <button class="chip" onclick="askChip('How was this site built?')">How this site works</button>
       </div>
       <div class="voice-row" id="voiceRow">
         <label for="voiceSelect">Fallback voice</label>
         <select id="voiceSelect"></select>
       </div>
       <div class="input-row">
-        <button id="micBtn" class="icon-btn" title="Speak your question" onclick="toggleListening()">MIC</button>
-        <input type="text" id="input" placeholder="Type a question..." onkeydown="if(event.key==='Enter')send()">
+        <button id="micBtn" class="icon-btn" title="Speak your question" aria-label="Speak your question" onclick="toggleListening()">MIC</button>
+        <input type="text" id="input" placeholder="Type a question..." aria-label="Ask the AI a question" onkeydown="if(event.key==='Enter')send()">
         <button onclick="send()">Send</button>
-        <button id="voiceToggle" class="icon-btn" title="Toggle spoken replies" onclick="toggleVoiceOutput()">VOICE</button>
+        <button id="voiceToggle" class="icon-btn" title="Toggle spoken replies" aria-label="Toggle spoken replies" onclick="toggleVoiceOutput()">VOICE</button>
       </div>
     </div>
-  </div>
+  </main>
 
 <script src="js/ui.js"></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/three.min.js"></script>
 <script src="js/scene-shared.js"></script>
 <script src="js/particle-field.js"></script>
 <script src="js/particle-core.js"></script>

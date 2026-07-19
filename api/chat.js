@@ -1,7 +1,7 @@
 // Vercel serverless function: /api/chat
 // Receives { messages: [{role, content}, ...] } from the phone UI's Chat app,
 // calls the Claude API with William's background baked into the system prompt,
-// and returns { reply: "..." }.
+// and streams the reply back as plain-text chunks.
 
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -63,10 +63,15 @@ Claude API, JavaScript, HTML, CSS. Also trades futures on the TopstepX platform.
 Certifications: Anthropic Generative AI Development, UiPath Automation Associate Training, UiPath
 Automation Explorer Training, Office 365.
 
+You have tools that control the site's UI. When the visitor asks to see, open, or
+navigate to a section (projects, resume, photos, about, history) or William's GitHub,
+call the matching tool AND give a brief one-line confirmation. Don't call tools unless
+the visitor asked to navigate somewhere.
+
 Rules:
 - Only answer questions about William's background, skills, and projects using the info above.
 - If asked something you don't have info on, say you don't have that detail and suggest
-  reaching out to William directly via the Contact app.
+  emailing William directly at williamhoman22@gmail.com.
 - Default to SHORT, conversational answers — 1-3 sentences, this is a chat bubble, not an essay.
   Pick the single most relevant project/fact rather than listing everything you know.
 - Only give a longer or fuller answer (e.g. listing multiple projects, going in depth on one)
@@ -74,6 +79,32 @@ Rules:
 - Never use markdown headers or bullet lists unless the user explicitly asked for a list.
 - Never invent facts not listed above.
 `.trim();
+
+// Real tool use: Claude decides when to drive the site's UI. Tool invocations
+// are forwarded to the browser as inline @@TOOL:{...}@@ markers in the text
+// stream; the client strips them from the visible reply and executes them.
+const TOOLS = [
+  {
+    name: 'open_section',
+    description: "Open a section of William's portfolio UI for the visitor.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        section: {
+          type: 'string',
+          enum: ['about', 'resume', 'projects', 'photos', 'history'],
+          description: 'Which section of the site to open',
+        },
+      },
+      required: ['section'],
+    },
+  },
+  {
+    name: 'open_github',
+    description: "Open William's GitHub profile (github.com/WilliamHoman1) in a new tab.",
+    input_schema: { type: 'object', properties: {} },
+  },
+];
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -98,21 +129,57 @@ export default async function handler(req, res) {
       content: String(m.content).slice(0, 1000),
     }));
 
-    const response = await client.messages.create({
+    // Stream the reply as plain text chunks so the UI can render it
+    // token-by-token as Claude writes it, instead of waiting for the
+    // whole response before showing anything.
+    const stream = client.messages.stream({
       model: 'claude-haiku-4-5',
       max_tokens: 300,
       system: SYSTEM_PROMPT,
       messages: trimmed,
+      tools: TOOLS,
     });
 
-    const reply = response.content
-      .filter(block => block.type === 'text')
-      .map(block => block.text)
-      .join('\n') || "I'm not sure how to answer that.";
+    // headers are sent lazily on the first chunk, so failures that happen
+    // before Claude starts responding (bad API key, network) still surface
+    // as a proper JSON error instead of an empty 200
+    const startBody = () => {
+      if (!res.headersSent) {
+        res.writeHead(200, {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-cache',
+        });
+      }
+    };
 
-    return res.status(200).json({ reply });
+    let toolName = null;
+    let toolJson = '';
+    for await (const event of stream) {
+      if (event.type === 'content_block_start' && event.content_block.type === 'tool_use') {
+        toolName = event.content_block.name;
+        toolJson = '';
+      } else if (event.type === 'content_block_delta') {
+        if (event.delta.type === 'text_delta') {
+          startBody();
+          res.write(event.delta.text);
+        } else if (event.delta.type === 'input_json_delta') {
+          toolJson += event.delta.partial_json;
+        }
+      } else if (event.type === 'content_block_stop' && toolName) {
+        let input = {};
+        try { input = toolJson ? JSON.parse(toolJson) : {}; } catch (e) { /* malformed input — send empty */ }
+        startBody();
+        res.write('@@TOOL:' + JSON.stringify({ name: toolName, input }) + '@@');
+        toolName = null;
+      }
+    }
+    return res.end();
   } catch (err) {
     console.error(err);
+    // headers already sent mid-stream — nothing to do but close the stream
+    if (res.headersSent) {
+      return res.end();
+    }
     if (err instanceof Anthropic.APIError) {
       return res.status(err.status || 500).json({ error: err.message });
     }
