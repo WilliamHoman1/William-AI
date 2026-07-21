@@ -21,6 +21,19 @@ function isRateLimited(ip) {
   return timestamps.length > RATE_LIMIT;
 }
 
+// Reject requests whose Origin doesn't match this deployment, so other sites
+// can't embed a fetch() to this endpoint and spend the ElevenLabs budget.
+function isAllowedOrigin(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -28,6 +41,10 @@ export default async function handler(req, res) {
 
   if (!ELEVENLABS_API_KEY || !VOICE_ID) {
     return res.status(500).json({ error: 'ElevenLabs is not configured on the server' });
+  }
+
+  if (!isAllowedOrigin(req)) {
+    return res.status(403).json({ error: 'Forbidden' });
   }
 
   const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();

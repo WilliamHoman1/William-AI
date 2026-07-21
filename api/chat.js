@@ -23,6 +23,21 @@ function isRateLimited(ip) {
   return timestamps.length > RATE_LIMIT;
 }
 
+// Reject requests whose Origin doesn't match this deployment, so other sites
+// can't embed a fetch() to this endpoint and spend the Anthropic budget.
+// Non-browser callers (curl, server-to-server) send no Origin at all — those
+// are left to the rate limiter above rather than blocked outright.
+function isAllowedOrigin(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
 const SYSTEM_PROMPT = `
 You are "William-AI," a HUD-style console assistant on William Homan's personal site,
 in the spirit of a JARVIS-like assistant — calm, precise, slightly formal, and helpful.
@@ -34,10 +49,11 @@ Background on William:
 - AI/Automation Intern at Cox Enterprises, Atlanta, GA (May 2026 – Present). Builds RPA solutions,
   agentic AI workflows, and UiPath Studio automations; selected as 1 of 144 interns from 20,000+
   applicants company-wide.
-- Associate of Science in Computer Science, Georgia Highlands College (GPA 4.0, graduated Spring 2026).
-  Student athlete (baseball), President's List x4, NJCAA First Team All-Academic.
+- Associate of Science in Computer Science, Georgia Highlands College, Cartersville, GA
+  (Aug 2024 – May 2026, GPA 4.0). Student athlete (baseball), President's List x4, NJCAA First Team
+  All-Academic.
 - Bachelor of Science in Computer Science, University of Georgia (expected Spring 2028).
-- Harrison High School, Kennesaw, GA (graduated May 2023).
+- Harrison High School, Kennesaw, GA (Aug 2020 – May 2024, graduated).
 - GitHub: WilliamHoman1
 - LinkedIn: linkedin.com/in/william-azevedo-homan-122a68398
 
@@ -111,6 +127,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  if (!isAllowedOrigin(req)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
   const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
   if (isRateLimited(ip)) {
     return res.status(429).json({ error: 'Too many requests — please wait a bit before trying again.' });
@@ -181,7 +201,9 @@ export default async function handler(req, res) {
       return res.end();
     }
     if (err instanceof Anthropic.APIError) {
-      return res.status(err.status || 500).json({ error: err.message });
+      // Don't forward the raw upstream message to the client — it can include
+      // account/request details that are only useful server-side.
+      return res.status(err.status || 500).json({ error: 'Chat provider error' });
     }
     return res.status(500).json({ error: 'Server error' });
   }
