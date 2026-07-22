@@ -475,20 +475,21 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 #voiceToggle.muted{ color:var(--dim);border-color:rgba(120,150,255,0.25);opacity:0.6; }
 
 @media (max-width: 900px){
-  /* the home screen (orb + rail) should never scroll on mobile — panels and
-     the chat drawer are fixed-position overlays with their own internal
-     scroll areas, so locking the page itself doesn't affect them.
-     position:fixed (not just overflow:hidden) is what actually stops iOS
-     Safari's residual rubber-band bounce — that bounce was both revealing
-     html's background as white bars at the top/bottom AND stealing touch
-     gestures that should've scrolled the panel underneath instead. */
-  html,body{
-    position:fixed;inset:0;width:100%;height:100dvh;
-    overflow:hidden;overscroll-behavior:none;
-  }
+  /* The home screen normally fits one screen with nothing to scroll, so this
+     doesn't restrict anything most of the time — but the Systems view below
+     can run taller than the viewport, and the page needs to be genuinely
+     scrollable for that content to be reachable at all. overscroll-behavior
+     still tames iOS's rubber-band bounce; html's background (see :root rule
+     above) keeps that bounce from ever flashing white. */
+  html,body{ overscroll-behavior:none; }
 
   .stage{ flex-direction:column; gap:16px; }
   .rail{ flex-direction:row; flex-wrap:wrap; justify-content:center; min-width:0; }
+  /* .center-slot is flex-row by default (desktop annotations float over the
+     orb via absolute positioning, so direction never mattered there); now
+     that .annotate-layer flows in-document on mobile, it needs to stack
+     below the orb instead of sitting beside it. */
+  .center-slot{ flex-direction:column; height:auto; }
 
   /* chat becomes a bottom sheet instead of a right-side drawer; the orb
      shrinks and moves toward the top of the screen so both stay visible
@@ -515,22 +516,17 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
   /* Systems callouts are hand-positioned (top/left/right/bottom %) for a
      wide desktop orb — on a narrow screen they overlap. Turn them into a
-     plain stacked, scrollable list instead; position:static makes the
-     inline offset styles on each .callout a no-op.
-     Anchored to the viewport (position:fixed), not to .center-slot: that
-     element sits wherever the flex column above it (header/rail) pushes it,
-     so a box positioned relative to it could extend past the bottom of the
-     locked mobile viewport — and since html/body clip overflow, that tail
-     end (and its scroll handle) became unreachable. Fixed + centered on the
-     viewport, like .panel and .resume-modal already do, guarantees the
-     whole thing — and its scrollbar — stays on-screen. */
+     plain stacked list that flows in-page instead: position:static makes
+     the inline offset styles on each .callout a no-op, and dropping it into
+     normal document flow (instead of an absolute/fixed overlay) means it
+     simply adds height to the page when it's open, and the page itself
+     scrolls to reach it — including the Systems button in the rail above,
+     which a floating overlay was previously covering, trapping the toggle
+     with no way to tap it again and close. */
   .annotate-layer{
-    position:fixed;inset:auto;top:50%;left:50%;
-    transform:translate(-50%,-50%);
-    width:92%;max-width:360px;max-height:80dvh;
-    overflow-y:auto;-webkit-overflow-scrolling:touch;
+    position:static;
+    width:92%;max-width:360px;margin:14px auto 0;
     display:flex;flex-direction:column;gap:8px;
-    pointer-events:auto;
     background:rgba(9,12,24,0.9);
     border:1px solid rgba(120,150,255,0.25);
     border-radius:8px;
