@@ -495,7 +495,7 @@ function hideChips(){
 // ---------- Voice: speech-to-text input + text-to-speech replies ----------
 const micBtn = document.getElementById('micBtn');
 const voiceToggleBtn = document.getElementById('voiceToggle');
-let voiceOutputEnabled = true;
+let voiceOutputEnabled = false; // opt-in — the user turns spoken replies on, not off
 let listening = false;
 let recognition = null;
 
