@@ -44,11 +44,18 @@ function isAllowedOrigin(req) {
 // configured or MAX_DAILY_TOKENS isn't set, budget checks are skipped and
 // the endpoint behaves as before — same pattern as the optional ElevenLabs
 // integration in api/tts.js.
-// Vercel's Marketplace "Upstash" integration injects either the legacy
-// KV_REST_API_* names or the Upstash-native UPSTASH_REDIS_REST_* names
-// depending on setup path — accept whichever is present.
-const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+// Vercel's Marketplace "Upstash" integration prefixes injected env vars with
+// the database's name (here "TokenTracking"), and the naming has shifted
+// across integration versions — accept whichever form is actually present
+// rather than hardcoding one.
+const KV_URL =
+  process.env.TokenTracking_KV_REST_API_URL ||
+  process.env.KV_REST_API_URL ||
+  process.env.UPSTASH_REDIS_REST_URL;
+const KV_TOKEN =
+  process.env.TokenTracking_KV_REST_API_TOKEN ||
+  process.env.KV_REST_API_TOKEN ||
+  process.env.UPSTASH_REDIS_REST_TOKEN;
 const MAX_DAILY_TOKENS = Number(process.env.MAX_DAILY_TOKENS) || 0;
 const BUDGET_ENABLED = Boolean(KV_URL && KV_TOKEN && MAX_DAILY_TOKENS > 0);
 
