@@ -494,8 +494,10 @@
       r.points.scale.setScalar(ringSpread);
     });
 
-    // the whole reactor tilts to follow the cursor/finger, like it's tracking you
-    reactor.rotation.y = Math.sin(t*0.25) * 0.1 + curPtr.x * 0.45;
+    // the whole reactor tilts to follow the cursor/finger, like it's tracking you,
+    // layered on a slow continuous drift so it still visibly turns at rest
+    // instead of just gently swaying in place
+    reactor.rotation.y = t*0.06 + Math.sin(t*0.25) * 0.1 + curPtr.x * 0.45;
     reactor.rotation.x = -curPtr.y * 0.3;
 
     renderer.render(scene, camera);
