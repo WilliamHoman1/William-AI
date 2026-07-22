@@ -88,23 +88,27 @@ makeBar(railLeftEl, 'Diag', () => toggleHud());
 
 // ---------- Systems view: in-place annotations explaining the rendering ----------
 const annotateLayer = document.getElementById('annotateLayer');
+const annotateBackdrop = document.getElementById('annotateBackdrop');
 let annotationsOn = false;
 
 function toggleAnnotations(force){
   annotationsOn = force !== undefined ? force : !annotationsOn;
   annotateLayer.hidden = !annotationsOn;
+  annotateBackdrop.classList.toggle('open', annotationsOn); // mobile-only backdrop — tap outside to close
   if(annotationsOn) setStatus('SYSTEMS VIEW — HOW THE RENDERING WORKS');
   else releaseStatus();
 }
 
 // ---------- Diagnostics HUD: live render stats, updated on a slow interval ----------
 const hudPanel = document.getElementById('hudPanel');
+const hudBackdrop = document.getElementById('hudBackdrop');
 let hudOn = false;
 const sessionStart = performance.now();
 
 function toggleHud(force){
   hudOn = force !== undefined ? force : !hudOn;
   hudPanel.hidden = !hudOn;
+  hudBackdrop.classList.toggle('open', hudOn); // mobile-only backdrop — tap outside to close
 }
 
 setInterval(() => {
@@ -146,7 +150,14 @@ const panelTitle = document.getElementById('panelTitle');
 const tabTitles = { about:'About Me', resume:'Resume', projects:'Projects', photos:'Photos', history:'History' };
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
+  btn.addEventListener('click', () => {
+    // Systems/Diag aren't tab-content panes inside this panel — they're
+    // separate overlays — so jumping to them from here closes the panel
+    // and opens the overlay instead of switching the visible pane.
+    if(btn.dataset.action === 'systems'){ closePanel(); toggleAnnotations(true); }
+    else if(btn.dataset.action === 'diag'){ closePanel(); toggleHud(true); }
+    else setActiveTab(btn.dataset.tab);
+  });
 });
 
 function setActiveTab(id){

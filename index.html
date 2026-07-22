@@ -54,6 +54,7 @@
   <canvas id="particleFieldGlow" aria-hidden="true"></canvas>
 
   <!-- Diagnostics HUD: live render stats overlay, toggled with ` or the DIAG rail button -->
+  <div class="hud-backdrop" id="hudBackdrop" onclick="toggleHud(false)"></div>
   <div class="hud-panel" id="hudPanel" hidden>
     <div class="hud-title">// DIAGNOSTICS</div>
     <div class="hud-row"><span>FPS</span><span id="hudFps">—</span></div>
@@ -85,6 +86,7 @@
 
       <!-- Systems view: in-place annotations explaining how each rendering
            technique works, toggled by the SYSTEMS rail button -->
+      <div class="annotate-backdrop" id="annotateBackdrop" onclick="toggleAnnotations(false)"></div>
       <div class="annotate-layer" id="annotateLayer" hidden aria-hidden="true">
         <button type="button" class="annotate-close" onclick="toggleAnnotations(false)" aria-label="Close systems view">✕</button>
         <div class="annotate-scroll">
@@ -107,6 +109,8 @@
       <button class="tab-btn" data-tab="projects" role="tab">Projects</button>
       <button class="tab-btn" data-tab="photos" role="tab">Photos</button>
       <button class="tab-btn" data-tab="history" role="tab">History</button>
+      <button class="tab-btn" data-action="systems" role="tab">Systems</button>
+      <button class="tab-btn" data-action="diag" role="tab">Diag</button>
     </div>
 
     <div class="tab-content" id="tab-about">

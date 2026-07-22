@@ -128,6 +128,11 @@ body::after{
 .callout.co-right b{ color:var(--purple); }
 .annotate-close{ display:none; } /* only needed on the mobile fixed-overlay layout below */
 .annotate-scroll{ display:contents; } /* invisible passthrough on desktop — real behavior added on mobile below */
+/* Tap-outside-to-close backdrops for Systems/Diag, mobile only — on desktop
+   Systems is just floating labels over a still-interactive orb (no modal
+   metaphor, nothing to dismiss by clicking away) and Diag is a small
+   corner HUD that doesn't need one either. */
+.annotate-backdrop, .hud-backdrop{ display:none; }
 @keyframes calloutIn{
   from{ opacity:0;transform:translateY(6px); }
   to{ opacity:1;transform:translateY(0); }
@@ -280,12 +285,23 @@ body::after{
 }
 .panel.open{ display:flex; opacity:1; transform:translate(-50%,-50%) scale(1); }
 .panel-header{
+  position:relative;
   display:flex;justify-content:space-between;align-items:center;
   padding:10px 14px;border-bottom:1px solid rgba(120,150,255,0.25);
   font-size:11px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;
 }
 .panel-header .back{ cursor:pointer;color:var(--blue);}
 .panel-header .back::before{ content:"‹ "; }
+/* The title is the header's 2nd child everywhere it's used (info panel,
+   resume modal, chat drawer) — flex space-between only balances the gaps
+   around it, so it visibly drifts off-center whenever the back label and
+   the actions on the other side aren't the same width (e.g. "Core" vs an
+   empty span, or vs "Clear · Email"). Centering it absolutely makes it
+   truly centered regardless of what's on either side. */
+.panel-header > span:nth-child(2){
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  white-space:nowrap;pointer-events:none;
+}
 .header-actions{ display:flex;gap:12px; }
 .header-action{ cursor:pointer;color:var(--purple); }
 .header-action:hover{ color:var(--white); }
@@ -488,6 +504,21 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     position:fixed;inset:0;width:100%;height:100dvh;
     overflow:hidden;overscroll-behavior:none;
   }
+
+  /* Systems/Diag tap-outside-to-close backdrops — same visual language as
+     .panel-backdrop, sitting just below their respective overlay's z-index. */
+  .annotate-backdrop{
+    display:block;position:fixed;inset:0;z-index:6;
+    background:rgba(2,3,8,0.6);opacity:0;pointer-events:none;
+    transition:opacity .3s ease;
+  }
+  .annotate-backdrop.open{ opacity:1;pointer-events:auto; }
+  .hud-backdrop{
+    display:block;position:fixed;inset:0;z-index:39;
+    background:rgba(2,3,8,0.5);opacity:0;pointer-events:none;
+    transition:opacity .3s ease;
+  }
+  .hud-backdrop.open{ opacity:1;pointer-events:auto; }
 
   .stage{ flex-direction:column; gap:16px; }
   .rail{ flex-direction:row; flex-wrap:wrap; justify-content:center; min-width:0; }
