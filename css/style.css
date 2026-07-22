@@ -398,6 +398,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .line.ai{color:var(--blue);text-shadow:0 0 6px rgba(90,215,255,0.4);}
 .line.ai::before{content:"WM-AI› "; color:var(--purple);}
 .line.sys{color:var(--dim);font-style:italic;font-size:12px;}
+.line.sys a{ color:var(--blue);font-style:normal;text-decoration:underline; }
+.line.sys a:hover{ color:var(--white); }
 /* suggested question chips — one-tap starter prompts above the input */
 .chip-row{
   display:flex;flex-wrap:wrap;gap:6px;
@@ -495,6 +497,26 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     width:min(42vmin, 260px);
     height:min(42vmin, 260px);
     transform:translateY(-14vh);
+  }
+
+  /* Systems callouts are hand-positioned (top/left/right/bottom %) for a
+     wide desktop orb — on a narrow screen they overlap. Turn them into a
+     plain stacked, scrollable list instead; position:static makes the
+     inline offset styles on each .callout a no-op. */
+  .annotate-layer{
+    position:absolute;inset:auto;top:8px;left:50%;
+    transform:translateX(-50%);
+    width:92%;max-width:360px;max-height:75vh;
+    overflow-y:auto;
+    display:flex;flex-direction:column;gap:8px;
+    pointer-events:auto;
+  }
+  .callout{
+    position:static;max-width:none;width:100%;
+  }
+  .callout.co-right{
+    border-left:2px solid var(--purple);border-right:none;
+    border-radius:0 5px 5px 0;text-align:left;
   }
 }
 @media (prefers-reduced-motion: reduce){

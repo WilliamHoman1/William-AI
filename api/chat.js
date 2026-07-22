@@ -23,6 +23,73 @@ function isRateLimited(ip) {
   return timestamps.length > RATE_LIMIT;
 }
 
+// Reject requests whose Origin doesn't match this deployment, so other sites
+// can't embed a fetch() to this endpoint and spend the Anthropic budget.
+// Non-browser callers (curl, server-to-server) send no Origin at all — those
+// are left to the rate limiter above rather than blocked outright.
+function isAllowedOrigin(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
+// Site-wide daily token budget, backed by Vercel KV (Upstash Redis) so it's
+// shared across regions/instances instead of resetting on every cold start
+// like the per-IP rate limiter above. Entirely optional: if KV isn't
+// configured or MAX_DAILY_TOKENS isn't set, budget checks are skipped and
+// the endpoint behaves as before — same pattern as the optional ElevenLabs
+// integration in api/tts.js.
+// Vercel's Marketplace "Upstash" integration injects either the legacy
+// KV_REST_API_* names or the Upstash-native UPSTASH_REDIS_REST_* names
+// depending on setup path — accept whichever is present.
+const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+const MAX_DAILY_TOKENS = Number(process.env.MAX_DAILY_TOKENS) || 0;
+const BUDGET_ENABLED = Boolean(KV_URL && KV_TOKEN && MAX_DAILY_TOKENS > 0);
+
+const FALLBACK_REPLY =
+  "I've hit my usage limit for today, so live chat is paused until it resets. " +
+  "Feel free to look through the Resume or Projects tabs, or email William directly " +
+  "at williamhoman22@gmail.com.";
+
+function todayKey() {
+  return 'tokens:' + new Date().toISOString().slice(0, 10); // UTC day
+}
+
+async function kvCommand(...args) {
+  const url = KV_URL + '/' + args.map(encodeURIComponent).join('/');
+  const res = await fetch(url, { headers: { Authorization: 'Bearer ' + KV_TOKEN } });
+  if (!res.ok) throw new Error('KV command failed: ' + res.status);
+  return (await res.json()).result;
+}
+
+async function isOverDailyBudget() {
+  if (!BUDGET_ENABLED) return false;
+  try {
+    const used = Number(await kvCommand('get', todayKey())) || 0;
+    return used >= MAX_DAILY_TOKENS;
+  } catch (err) {
+    console.error('KV budget check failed, allowing request', err);
+    return false; // fail open — a KV outage shouldn't take the chat down
+  }
+}
+
+async function recordTokenUsage(count) {
+  if (!BUDGET_ENABLED || !count) return;
+  try {
+    const key = todayKey();
+    await kvCommand('incrby', key, count);
+    await kvCommand('expire', key, 60 * 60 * 48); // 2 days, so keys don't pile up
+  } catch (err) {
+    console.error('KV usage recording failed', err);
+  }
+}
+
 const SYSTEM_PROMPT = `
 You are "William-AI," a HUD-style console assistant on William Homan's personal site,
 in the spirit of a JARVIS-like assistant — calm, precise, slightly formal, and helpful.
@@ -34,10 +101,11 @@ Background on William:
 - AI/Automation Intern at Cox Enterprises, Atlanta, GA (May 2026 – Present). Builds RPA solutions,
   agentic AI workflows, and UiPath Studio automations; selected as 1 of 144 interns from 20,000+
   applicants company-wide.
-- Associate of Science in Computer Science, Georgia Highlands College (GPA 4.0, graduated Spring 2026).
-  Student athlete (baseball), President's List x4, NJCAA First Team All-Academic.
+- Associate of Science in Computer Science, Georgia Highlands College, Cartersville, GA
+  (Aug 2024 – May 2026, GPA 4.0). Student athlete (baseball), President's List x4, NJCAA First Team
+  All-Academic.
 - Bachelor of Science in Computer Science, University of Georgia (expected Spring 2028).
-- Harrison High School, Kennesaw, GA (graduated May 2023).
+- Harrison High School, Kennesaw, GA (Aug 2020 – May 2024, graduated).
 - GitHub: WilliamHoman1
 - LinkedIn: linkedin.com/in/william-azevedo-homan-122a68398
 
@@ -111,9 +179,20 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  if (!isAllowedOrigin(req)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
   const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
   if (isRateLimited(ip)) {
     return res.status(429).json({ error: 'Too many requests — please wait a bit before trying again.' });
+  }
+
+  if (await isOverDailyBudget()) {
+    // Revert to a canned, non-LLM reply instead of calling Claude at all —
+    // this is what actually stops spend once the daily cap is hit.
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' });
+    return res.end(FALLBACK_REPLY);
   }
 
   try {
@@ -154,8 +233,14 @@ export default async function handler(req, res) {
 
     let toolName = null;
     let toolJson = '';
+    let inputTokens = 0;
+    let outputTokens = 0;
     for await (const event of stream) {
-      if (event.type === 'content_block_start' && event.content_block.type === 'tool_use') {
+      if (event.type === 'message_start') {
+        inputTokens = event.message.usage.input_tokens;
+      } else if (event.type === 'message_delta') {
+        outputTokens = event.usage.output_tokens;
+      } else if (event.type === 'content_block_start' && event.content_block.type === 'tool_use') {
         toolName = event.content_block.name;
         toolJson = '';
       } else if (event.type === 'content_block_delta') {
@@ -173,6 +258,7 @@ export default async function handler(req, res) {
         toolName = null;
       }
     }
+    await recordTokenUsage(inputTokens + outputTokens);
     return res.end();
   } catch (err) {
     console.error(err);
@@ -181,7 +267,9 @@ export default async function handler(req, res) {
       return res.end();
     }
     if (err instanceof Anthropic.APIError) {
-      return res.status(err.status || 500).json({ error: err.message });
+      // Don't forward the raw upstream message to the client — it can include
+      // account/request details that are only useful server-side.
+      return res.status(err.status || 500).json({ error: 'Chat provider error' });
     }
     return res.status(500).json({ error: 'Server error' });
   }
