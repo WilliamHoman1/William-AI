@@ -516,14 +516,25 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   /* Systems callouts are hand-positioned (top/left/right/bottom %) for a
      wide desktop orb — on a narrow screen they overlap. Turn them into a
      plain stacked, scrollable list instead; position:static makes the
-     inline offset styles on each .callout a no-op. */
+     inline offset styles on each .callout a no-op.
+     Anchored to the viewport (position:fixed), not to .center-slot: that
+     element sits wherever the flex column above it (header/rail) pushes it,
+     so a box positioned relative to it could extend past the bottom of the
+     locked mobile viewport — and since html/body clip overflow, that tail
+     end (and its scroll handle) became unreachable. Fixed + centered on the
+     viewport, like .panel and .resume-modal already do, guarantees the
+     whole thing — and its scrollbar — stays on-screen. */
   .annotate-layer{
-    position:absolute;inset:auto;top:8px;left:50%;
-    transform:translateX(-50%);
-    width:92%;max-width:360px;max-height:75dvh;
+    position:fixed;inset:auto;top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    width:92%;max-width:360px;max-height:80dvh;
     overflow-y:auto;-webkit-overflow-scrolling:touch;
     display:flex;flex-direction:column;gap:8px;
     pointer-events:auto;
+    background:rgba(9,12,24,0.9);
+    border:1px solid rgba(120,150,255,0.25);
+    border-radius:8px;
+    padding:12px;
   }
   .callout{
     position:static;max-width:none;width:100%;
