@@ -224,9 +224,14 @@ const resumeBackdrop = document.getElementById('resumeBackdrop');
 const resumeFrame = document.getElementById('resumeFrame');
 
 function openResume(){
+  // touch devices: let the link open the PDF in a new tab instead of our
+  // fixed-size modal — the OS/browser's native PDF viewer gives real
+  // pinch-zoom and page navigation, which a cramped iframe can't match
+  if (matchMedia('(pointer: coarse)').matches) return true;
   resumeFrame.src = 'assets/resume.pdf';
   resumeModal.classList.add('open');
   resumeBackdrop.classList.add('open');
+  return false;
 }
 function closeResume(){
   resumeModal.classList.remove('open');

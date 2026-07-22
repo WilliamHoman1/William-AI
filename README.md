@@ -39,11 +39,11 @@ api/chat.js           Vercel serverless fn → Claude API (streaming + tool use,
 api/tts.js            Vercel serverless fn → ElevenLabs TTS (key stays server-side)
 ```
 
-Both API keys live only in serverless functions — nothing sensitive ever ships to the client. The chat endpoint includes a per-IP rate limit and caps message history/length as a cost guardrail.
+Both API keys live only in serverless functions — nothing sensitive ever ships to the client. The chat endpoint includes a per-IP rate limit and caps message history/length as a cost guardrail, plus an optional site-wide daily token budget (see below).
 
 ## Stack
 
-Three.js (WebGL) · custom GLSL shaders · Web Speech API · Web Audio API · Claude API (`claude-haiku-4-5`) · ElevenLabs TTS · Vercel serverless functions
+Three.js (WebGL) · custom GLSL shaders · Web Speech API · Web Audio API · Claude API (`claude-haiku-4-5`) · ElevenLabs TTS · Vercel serverless functions · Vercel KV (optional, cost guardrail)
 
 ## Deploy (Vercel)
 
@@ -51,7 +51,9 @@ Three.js (WebGL) · custom GLSL shaders · Web Speech API · Web Audio API · Cl
 2. In **Settings → Environment Variables**, add:
    - `ANTHROPIC_API_KEY` — from [console.anthropic.com](https://console.anthropic.com)
    - `ELEVENLABS_API_KEY` + `ELEVENLABS_VOICE_ID` *(optional)* — enables the natural TTS voice; without them, replies fall back to the browser's built-in speech synthesis.
-3. Deploy. Vercel auto-detects the `api/` functions — no extra config needed.
+   - `MAX_DAILY_TOKENS` *(optional)* — a site-wide cap on Claude tokens/day (input+output). Once hit, `/api/chat` stops calling Claude and returns a canned "check back tomorrow" reply instead. Requires Vercel KV (below); without it this is skipped entirely.
+3. *(Optional, for the daily budget above)* In **Storage → Create Database → Marketplace Database Providers**, add **Upstash** (Redis) and connect it to this project — this auto-injects the REST URL/token env vars, no extra code needed.
+4. Deploy. Vercel auto-detects the `api/` functions — no extra config needed.
 
 ## Local development
 

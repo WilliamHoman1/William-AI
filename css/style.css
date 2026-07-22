@@ -498,6 +498,26 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     height:min(42vmin, 260px);
     transform:translateY(-14vh);
   }
+
+  /* Systems callouts are hand-positioned (top/left/right/bottom %) for a
+     wide desktop orb — on a narrow screen they overlap. Turn them into a
+     plain stacked, scrollable list instead; position:static makes the
+     inline offset styles on each .callout a no-op. */
+  .annotate-layer{
+    position:absolute;inset:auto;top:8px;left:50%;
+    transform:translateX(-50%);
+    width:92%;max-width:360px;max-height:75vh;
+    overflow-y:auto;
+    display:flex;flex-direction:column;gap:8px;
+    pointer-events:auto;
+  }
+  .callout{
+    position:static;max-width:none;width:100%;
+  }
+  .callout.co-right{
+    border-left:2px solid var(--purple);border-right:none;
+    border-radius:0 5px 5px 0;text-align:left;
+  }
 }
 @media (prefers-reduced-motion: reduce){
   .core-stage,.panel,.chat-drawer,.resume-modal,.lightbox{transition:none;}
