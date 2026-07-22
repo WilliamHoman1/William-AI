@@ -8,7 +8,7 @@
   --glow: 0 0 16px rgba(120,150,255,0.7), 0 0 34px rgba(150,100,255,0.35);
 }
 *{box-sizing:border-box;}
-html,body{height:100%;margin:0;}
+html,body{height:100%;margin:0;background:var(--bg);}
 /* custom HUD reticle cursor — desktop/fine-pointer only, so touch devices
    keep the OS default instead of a stray cursor icon */
 body{
@@ -33,6 +33,13 @@ body::after{
 
 .header{text-align:center;margin-bottom:6px;position:relative;z-index:5;}
 .header .brand{font-size:13px;letter-spacing:6px;color:var(--dim);text-transform:uppercase;}
+
+.about-signoff{
+  margin-top:20px;padding-top:16px;
+  border-top:1px solid rgba(120,150,255,0.15);
+  display:flex;justify-content:center;
+}
+.about-signoff .signoff-logo{height:clamp(20px, 4.5vw, 34px);width:auto;opacity:0.6;}
 .header h1{
   margin:6px 0 0;font-size:28px;font-weight:600;letter-spacing:3px;
   color:var(--white);text-shadow:0 0 14px rgba(120,150,255,0.4);
@@ -470,8 +477,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 @media (max-width: 900px){
   /* the home screen (orb + rail) should never scroll on mobile — panels and
      the chat drawer are fixed-position overlays with their own internal
-     scroll areas, so locking the page itself doesn't affect them */
-  html,body{ height:100dvh; overflow:hidden; overscroll-behavior:none; }
+     scroll areas, so locking the page itself doesn't affect them.
+     position:fixed (not just overflow:hidden) is what actually stops iOS
+     Safari's residual rubber-band bounce — that bounce was both revealing
+     html's background as white bars at the top/bottom AND stealing touch
+     gestures that should've scrolled the panel underneath instead. */
+  html,body{
+    position:fixed;inset:0;width:100%;height:100dvh;
+    overflow:hidden;overscroll-behavior:none;
+  }
 
   .stage{ flex-direction:column; gap:16px; }
   .rail{ flex-direction:row; flex-wrap:wrap; justify-content:center; min-width:0; }
@@ -506,8 +520,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   .annotate-layer{
     position:absolute;inset:auto;top:8px;left:50%;
     transform:translateX(-50%);
-    width:92%;max-width:360px;max-height:75vh;
-    overflow-y:auto;
+    width:92%;max-width:360px;max-height:75dvh;
+    overflow-y:auto;-webkit-overflow-scrolling:touch;
     display:flex;flex-direction:column;gap:8px;
     pointer-events:auto;
   }
