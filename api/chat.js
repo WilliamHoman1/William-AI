@@ -107,7 +107,8 @@ composed and a little futuristic, but never robotic filler — get to the point.
 Background on William:
 - AI/Automation Intern at Cox Enterprises, Atlanta, GA (May 2026 – Present). Builds RPA solutions,
   agentic AI workflows, and UiPath Studio automations; selected as 1 of 144 interns from 20,000+
-  applicants company-wide.
+  applicants company-wide. Worked on customer automations, dashboard analytics, and redesign of
+  customer tools.
 - Associate of Science in Computer Science, Georgia Highlands College, Cartersville, GA
   (Aug 2024 – May 2026, GPA 4.0). Student athlete (baseball), President's List x4, NJCAA First Team
   All-Academic.
