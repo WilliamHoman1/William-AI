@@ -86,12 +86,15 @@
       <!-- Systems view: in-place annotations explaining how each rendering
            technique works, toggled by the SYSTEMS rail button -->
       <div class="annotate-layer" id="annotateLayer" hidden aria-hidden="true">
+        <button type="button" class="annotate-close" onclick="toggleAnnotations(false)" aria-label="Close systems view">✕</button>
+        <div class="annotate-scroll">
         <div class="callout" style="top:8%;left:2%;"><b>NEBULA FIELD</b>13,000 clustered particles + cosmic-web filaments, wrapped endlessly on the GPU</div>
         <div class="callout" style="top:34%;left:0;"><b>CORE SPHERE</b>5,200 particles — position is a pure function of time + hashed seeds in the vertex shader; zero CPU work per frame</div>
         <div class="callout" style="bottom:18%;left:3%;"><b>HALO RINGS</b>3,790 particles on four tilted pivots, JARVIS-reactor style</div>
         <div class="callout co-right" style="top:12%;right:2%;"><b>SOLAR FLARES</b>1,200 GPU-looped jets — lifetime, direction and arc all derived from a hash of time, no per-particle state</div>
         <div class="callout co-right" style="top:44%;right:0;"><b>PLASMA ARCS</b>jagged bolts baked once on the CPU; the shader adds live wiggle + per-bolt flicker. Two "seeker" bolts re-aim at your cursor every frame</div>
         <div class="callout co-right" style="bottom:12%;right:3%;"><b>BLOOM</b>no postprocessing pipeline — each WebGL canvas is mirrored to a low-res 2D canvas, blurred + screen-blended in CSS</div>
+        </div>
       </div>
 
       <!-- UNIFIED INFO PANEL WITH HORIZONTAL TABS -->
