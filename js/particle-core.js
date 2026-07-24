@@ -116,7 +116,18 @@
         vec3 driftDir = normalize(vec3(h1, h2, h3) - 0.5 + 0.0001);
         pos += driftDir * n * 0.16 * uSpread;
 
+        // Fresnel rim light: "position" is (pre-distortion) a unit-sphere
+        // direction, so it doubles as a surface normal. Particles whose
+        // normal points near-perpendicular to the view ray sit on the
+        // silhouette edge and get a white-hot boost — the sun-like limb
+        // brightening that makes the core read as a lit sphere instead of
+        // a flat blob of dots.
         vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+        vec3 viewNormal = normalize(normalMatrix * normalize(position));
+        vec3 viewDir = normalize(-mvPosition.xyz);
+        float fresnel = pow(1.0 - clamp(dot(viewNormal, viewDir), 0.0, 1.0), 2.6);
+        vColor = mix(vColor, vec3(1.5, 1.42, 1.28) * vColor, fresnel * 0.85);
+
         gl_PointSize = uSize * (0.7 + h2 * 0.6) * (uPerspective / -mvPosition.z);
         gl_Position = projectionMatrix * mvPosition;
       }
@@ -499,6 +510,11 @@
     // instead of just gently swaying in place
     reactor.rotation.y = t*0.06 + Math.sin(t*0.25) * 0.1 + curPtr.x * 0.45;
     reactor.rotation.x = -curPtr.y * 0.3;
+
+    // idle camera "breathing": a slow, tiny dolly in/out so the corona and
+    // rings visibly part-parallax against each other even with no pointer
+    // input — reads as depth rather than a flat billboard stack.
+    camera.position.z = 9.5 + Math.sin(t * 0.17) * 0.18;
 
     renderer.render(scene, camera);
     HUD_STATS.coreCalls = renderer.info.render.calls;
