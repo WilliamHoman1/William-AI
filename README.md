@@ -1,7 +1,6 @@
 # WilliamAI — Interactive AI Portfolio
 
-**Live site:** [william-ai-lyart.vercel.app](https://william-ai-lyart.vercel.app)
-
+**Live site:** [william-ai-lyart.vercel.app](https://williamhoman.dev)
 A JARVIS-inspired portfolio built around a glowing 3D particle reactor you can *talk to*. Tap the core, ask a question out loud, and a Claude-powered AI assistant answers on William's behalf — streaming its reply live and speaking it back with a synthesized voice while the reactor pulses to the amplitude of its own speech.
 
 No frameworks, no build step, no physics library — the entire visual layer is hand-written GLSL running on the GPU.
